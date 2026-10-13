@@ -99,6 +99,9 @@
 - 修改个人 IM 渠道（`apps/desktop/src/main/im/**`）或官方 hook（`hook-control/**`）的
   找/建任务、命令、排队与插话、输入拼装、事件观察、交互、收尾或停止逻辑前，必须先读
   `docs/dev-rules/im-turn-flow.md`（入口账本、状态清单、不变量与迁移批次）。
+- 修改飞书 / Lark 个人机器人的项目绑定、角色 / 规则、AI 丰富，或 thread / topic
+  任务定位与上下文之前，必须先读 `docs/product-rules/feishu-bot-project-and-context.md`：
+  项目绑定决定工作目录，同话题续同一任务，不同话题隔离；二者不能混为一谈。
 - 新增或修改**任一 Telegram bot 的用户可见行为**（命令、消息呈现、收口策略、群行为、
   权限口径、附件与表情）前，必须先读能力台账 `docs/product-rules/telegram-bot-parity.md`：
   两个 bot 是两套架构，差异可以有但必须登记在表里；表里标「有意不同」的行**不要去
@@ -166,6 +169,9 @@
   「故障半径三问」。
 - 在 Cindy 内嵌 worktree 会话里工作、准备提交或直推、或做 code review 前，必须先读
   `docs/dev-rules/development-workflow.md`。
+- 在个人 fork 上持续开发、同步官方更新、构建或安装个人客户端前，必须先读
+  `docs/dev-rules/personal-fork-development.md`：官方代码进入集成分支，不覆盖个人
+  `main`；源码构建、个人安装与正式版应用内更新必须区分。
 
 ## 通用工作流程
 

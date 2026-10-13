@@ -172,6 +172,26 @@ describe('feishu ImChannelAdapter characterization', () => {
     expect(adapter.sessions.sessionIdFor('cli_abc', 'ou_xyz')).toBe('feishu_cli_abc_ou_xyz');
   });
 
+  it('会话切分: 同一话题恒同一 session; 新话题 / 群主流 / 私聊各自独立', () => {
+    // 传输层语义(见 lizi-im/feishu/wsClient): 话题里的消息带同一个 threadId →
+    // lane `g/{chatId}/{threadId}` 不变, 一定续同一个会话; 群主流 @ 恒开新话题
+    // → 新 threadId → 新会话。这里钉住确定性 id 不会把不同话题折进同一行。
+    const topicA = 'g/oc_chat1/omt_topic_a';
+    const topicB = 'g/oc_chat1/omt_topic_b';
+    const mainLane = 'g/oc_chat1';
+    const first = adapter.sessions.sessionIdFor('cli_abc', topicA);
+    expect(adapter.sessions.sessionIdFor('cli_abc', topicA)).toBe(first);
+    expect(adapter.sessions.sessionIdFor('cli_abc', topicB)).not.toBe(first);
+    expect(adapter.sessions.sessionIdFor('cli_abc', mainLane)).not.toBe(first);
+    expect(adapter.sessions.sessionIdFor('cli_abc', 'ou_dm')).not.toBe(first);
+  });
+
+  it('defaultWorkingDir 未绑定项目时 = 托管目录（新会话落点）', () => {
+    expect(adapter.sessions.defaultWorkingDir?.('cli_abc')).toBe(
+      adapter.sessions.ensureWorkingDir('cli_abc'),
+    );
+  });
+
   it('渠道专属插入列为 feishuBotAppId / feishuOpenId', () => {
     expect(adapter.sessions.extraInsertColumns('cli_abc', 'ou_xyz')).toEqual({
       feishuBotAppId: 'cli_abc',

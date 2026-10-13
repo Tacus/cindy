@@ -75,6 +75,7 @@ import {
   wecomIm,
 } from './host';
 import { wireFeishuOrchestrator, type FeishuOrchestratorConfig } from './feishu';
+import { registerFeishuBotSettingsIpc } from './feishu/botSettingsIpc';
 import { wireDiscordOrchestrator } from './discord';
 import { wireTelegramOrchestrator } from './telegram';
 import { wireDingTalkOrchestrator } from './dingtalk';
@@ -234,6 +235,9 @@ export function startImOrchestrators(): void {
   wireDingTalkOrchestrator(dingtalkIm, DINGTALK_CONFIG);
   wireWechatOrchestrator(wechatIm, WECHAT_CONFIG);
   wireWecomOrchestrator(wecomIm, WECOM_CONFIG);
+
+  // 飞书 bot 行为设置(项目绑定 / 角色 / 规则 / AI 丰富)的 IPC。
+  registerFeishuBotSettingsIpc();
 
   ipcMain.handle('wechatBot:get-state', (event) => {
     assertTrustedAppRendererEvent(event);
@@ -484,6 +488,17 @@ async function reconcileOwnerScopedImWorkingDirs(): Promise<void> {
         .where(eq(sessions.source, 'feishu'));
       for (const row of rows) {
         if (!row.botContextId) continue;
+        // 只归一如仍指向本 bot 托管目录的旧路径(owner 命名空间迁移)。用户绑定
+        // 项目目录后行会停在那里, 不能被启动期归一扫回托管目录 —— 同 telegram
+        // 对 `/project` 行的处理, 用完整尾段 `…/im-working-dir/{botAppId}` 判定。
+        const managedTail = path.join('im-working-dir', row.botContextId);
+        if (
+          row.workingDir &&
+          !row.workingDir.endsWith(`${path.sep}${managedTail}`) &&
+          !row.workingDir.endsWith(`/${managedTail}`)
+        ) {
+          continue;
+        }
         const scoped = feishuAdapter.sessions.ensureWorkingDir(row.botContextId);
         if (row.workingDir === scoped) continue;
         await db.update(sessions).set({ workingDir: scoped }).where(eq(sessions.id, row.id));

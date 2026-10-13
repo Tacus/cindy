@@ -22,6 +22,8 @@
 
 - [`core-product-principles.md`](core-product-principles.md)：Cindy 的目的、连接本质、
   Core 边界，以及 Agent、Skill、插件的产品分工。
+- [`feishu-bot-project-and-context.md`](feishu-bot-project-and-context.md)：飞书 / Lark
+  个人机器人的项目绑定、角色与规则、AI 丰富，以及同话题续接 / 新话题隔离。
 - [`review-product-direction.md`](review-product-direction.md)：Cindy Review 的北极星、
   通用成果复核定义、运行与证据原则、当前边界、后续路线和待确认事项。
 - [`region-and-editions.md`](region-and-editions.md)：Global 与中国大陆版的关系、

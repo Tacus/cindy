@@ -23,43 +23,35 @@ import { captureImContext } from '../../../shared/imMessageSource';
  */
 
 import { resolveFeishuNotificationReply } from './notificationOrigin';
-import path from 'node:path';
-import fs from 'node:fs';
-import { app } from 'electron';
 import { decodeFeishuLaneUserId, type FeishuIM, type FeishuLane } from '@cindy/im';
 
 import type { ImChannelAdapter, ImOrchestratorConfig } from '../shared/types';
 import { readImDefaultSettings } from '../defaultSettingsStore';
-import { claimLegacyImPath, ownerScopedImUserDataPath } from '../ownerScopedStorage';
 import { createLogger } from '../../logger';
+import {
+  buildFeishuBotInstructionBlock,
+  ensureFeishuManagedWorkingDir,
+  resolveFeishuWorkingDir,
+} from './botSettings';
 import {
   buildFeishuGroupContext,
   buildFeishuReplyContextBlock,
   sanitizeDisplayText,
 } from './groupContext';
-import {
-  FILTERED_HISTORY_PLACEHOLDER,
-  looksLikePromptInjection,
-} from './groupContextInjection';
+import { FILTERED_HISTORY_PLACEHOLDER, looksLikePromptInjection } from './groupContextInjection';
 import { createFeishuGroupTurnPermissionPolicy } from './permissionPolicy';
 import { ui, REACTION_PROCESSING } from './uiText';
 
 const log = createLogger('im:feishu-adapter');
 
 /**
- * 飞书 bot 的 workingDir = `userData/im-working-dir/{botAppId}/`
- * 同 bot 下所有 feishu session 共享这个目录 —— 与老系统对齐
- * (sessionBridge.ts:200-209)。设计取舍:
- *   - 共享: 模型可以跨 turn / 跨 session 引用之前生成的文件 ("看下我们刚做的那个")
- *   - 不分:每个 session 自己一坨工作目录, 跨 session 引用文件需要绝对路径
- * 在 owner 私聊场景下共享更符合直觉。
+ * 飞书 bot 的工作目录策略(实现见 ./botSettings, 用户绑定的项目目录也在那里):
+ *   - 托管目录 = `userData/im-working-dir/{botAppId}/`, 同 bot 下所有 feishu
+ *     session 共享 —— 模型可以跨 turn / 跨 session 引用之前生成的文件
+ *     ("看下我们刚做的那个"); 不同 session 各自一坨工作目录反而要绝对路径。
+ *   - 用户在设置卡绑定项目目录后, 新会话用项目目录, 托管目录退为未绑定 /
+ *     目录不可用时的回落(见 resolveFeishuWorkingDir)。
  */
-function ensureWorkingDir(botAppId: string): string {
-  const dir = ownerScopedImUserDataPath('im-working-dir', botAppId);
-  claimLegacyImPath(path.join(app.getPath('userData'), 'im-working-dir', botAppId), dir);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
 
 /** lane userId 含 `/`, 会话 id 场景统一替换成 `-`(telegram 同款)。 */
 function sessionSafeUserId(userId: string): string {
@@ -288,7 +280,10 @@ export function buildFeishuAdapter(
       // 飞书 bot 私聊会话进侧边栏「对话」分组; workingDir 是 app 托管的
       // im-working-dir, 不该以它聚成假项目组
       workspaceKind: 'dialogue',
-      ensureWorkingDir,
+      // 托管目录语义保持不动(reconcile / 归属判断都按它算); 新会话的落点由
+      // defaultWorkingDir 读用户绑定: 项目目录 ?? 托管目录。
+      ensureWorkingDir: ensureFeishuManagedWorkingDir,
+      defaultWorkingDir: (botAppId) => resolveFeishuWorkingDir(botAppId),
       extraInsertColumns: (botAppId, userId) => ({
         feishuBotAppId: botAppId,
         feishuOpenId: userId,
@@ -349,6 +344,9 @@ export function buildFeishuAdapter(
       },
     },
     processingEmoji: REACTION_PROCESSING,
+    // 目录不等于托管目录即视为用户绑定的项目: 侧边栏归到项目分组, 并让
+    // `/settings` 报项目名而不是「对话」。不启用 `/project` 命令(那是 telegram)。
+    workspaceKindFromPath: true,
     queuedEmoji: 'OneSecond',
     buildVendorOptions: (userId) => ({ feishuChatId: userId, source: 'feishu' }),
 
@@ -356,7 +354,9 @@ export function buildFeishuAdapter(
     // 注入可借 owner 轮次的宽松档执行危险操作; 确认卡经 deliverToOwnerDm
     // 改投 owner 私聊, 点击也只认 owner。DM 不挂, owner 私聊保持全速。
     turnPermissionPolicyFor: (event) =>
-      event.speaker ? createFeishuGroupTurnPermissionPolicy(event.messageId, event.speaker.isOwner) : undefined,
+      event.speaker
+        ? createFeishuGroupTurnPermissionPolicy(event.messageId, event.speaker.isOwner)
+        : undefined,
     // 群护栏取缔: 用户在渠道设置里显式允许群会话用「完全访问」→ 该档位
     // 不再挂强确认策略(maker 不再拒绝, 按用户选择直接执行)。群上下文的
     // 防注入过滤/包裹在 prepareAgentTurnText 里独立生效, 不随权限档关闭;
@@ -378,7 +378,13 @@ export function buildFeishuAdapter(
     // 群 lane: 触发时按页回翻群历史拼上下文前缀(含媒体附件), 落库仍是渠道原文。
     prepareAgentTurnText: async (event) => {
       const lane = decodeFeishuLaneUserId(event.senderId);
-      if (!lane) return null;
+      // 主人的角色/规则每轮注入送模型文本(不落库、不进「附带上下文」快照)。
+      const botInstructions = buildFeishuBotInstructionBlock();
+      if (!lane) {
+        // DM: 没有群历史前缀, 但角色/规则同样每轮生效。
+        if (!botInstructions) return null;
+        return { agentText: `${botInstructions}${event.text}` };
+      }
       // 普通群主流「回复某条消息并 @bot」已经由 transport 精确解析 parent_id。
       // 成功时只给模型这条引用和当前问题，避免同页里无关的近期文字/图片再次
       // 抢走“这个”的指代；解析失败时 replyContext 缺省，继续走下面的旧群历史。
@@ -396,7 +402,7 @@ export function buildFeishuAdapter(
           : event.replyContext;
         const replyPrefix = buildFeishuReplyContextBlock(safeReply);
         return {
-          agentText: `${replyPrefix}${event.text}`,
+          agentText: `${botInstructions}${replyPrefix}${event.text}`,
           contextSnapshot: captureImContext({ replyPrefix, replyMessageCount: 1 }),
           // 审阅器只见过滤后的同一份引用, 被拦下的成员文本不外传给审阅模型。
           replyContext: safeReply,
@@ -427,9 +433,11 @@ export function buildFeishuAdapter(
           log,
         },
       });
-      if (!built) return null;
+      if (!built) {
+        return botInstructions ? { agentText: `${botInstructions}${event.text}` } : null;
+      }
       return {
-        agentText: `${built.prefix}${event.text}`,
+        agentText: `${botInstructions}${built.prefix}${event.text}`,
         // 快照用不带 user_id 的展示版: id 只给模型, 不进「群聊背景」展示。
         contextSnapshot: captureImContext({
           groupPrefix: built.displayPrefix,

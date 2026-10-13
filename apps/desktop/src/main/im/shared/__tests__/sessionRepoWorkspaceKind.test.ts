@@ -17,7 +17,7 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // 新任务经公共入口 openSession(模型准入)—— 准入本身由 sessionOpening 的测试覆盖, 这里
 // 只把准入前的路由原样透传给建行回调。
@@ -51,6 +51,28 @@ vi.mock('../../../logger', () => ({
 vi.mock('../../../maker-host/session-provider-store', () => ({
   setSessionProvider: vi.fn(),
 }));
+vi.mock('../../../maker-host/codex-local-sessions', () => ({
+  importExternalCodexMessagesForSession: vi.fn(),
+}));
+vi.mock('../../../maker-host/claude-local-sessions', () => ({
+  importExternalClaudeCodeMessagesForSession: vi.fn(),
+}));
+vi.mock('../../../embedders/chat-history-embedder', () => ({
+  onMessageCreated: vi.fn(),
+}));
+vi.mock('../../../git-context/prRefsStore', () => ({
+  recomputePrRefsForSession: vi.fn(),
+  recordPrRefsForMessage: vi.fn(),
+}));
+vi.mock('../../../cindy-media/ledger', () => ({
+  removeRefs: vi.fn(),
+}));
+vi.mock('../../../cindy-media/chatAttachments', () => ({
+  commitMessageMediaRefs: vi.fn(),
+}));
+vi.mock('../../../cindy-media/taskImageDelivery', () => ({
+  restoreTaskImageRows: async (_client: unknown, rows: unknown[]) => rows,
+}));
 vi.mock('../../defaultSessionSettings', () => ({
   getImDefaultEffortFor: vi.fn(() => 'high'),
   resolveImSessionDefaults: vi.fn(async () => ({
@@ -64,15 +86,17 @@ vi.mock('../../defaultSessionSettings', () => ({
 }));
 
 let db: ReturnType<typeof drizzle>;
+let raw: Database.Database;
 const account = vi.hoisted(() => ({ current: {} as object }));
 vi.mock('../../../localDb/client/current', () => ({
   getDbClient: () => ({ drizzle: db }),
   getCurrentDbClientSnapshot: () => account.current,
 }));
 
-const { sessions } = await import('../../../localDb/schema');
+const { sessions, messages } = await import('../../../localDb/schema');
 const { createImSessionRepo } = await import('../sessionRepo');
 const { switchSessionWorkingDir } = await import('../sessionRepo');
+const { readMessagesList } = await import('../../../localDb/ipc/messages');
 import type { ImOrchestratorConfig, ImSessionNamespace } from '../types';
 
 const MANAGED_DIR = '/tmp/im-working-dir/telegram-bot1';
@@ -88,8 +112,8 @@ const ns = {
 } as unknown as ImSessionNamespace;
 
 /** 从生产 schema 现推 CREATE TABLE —— 列跟着 schema 走, 不手抄。 */
-function createTableSql(): string {
-  const config = getTableConfig(sessions);
+function createTableSql(table: typeof sessions | typeof messages): string {
+  const config = getTableConfig(table);
   const cols = config.columns.map((col) => {
     const parts = [`"${col.name}"`, col.getSQLType()];
     if (col.primary) parts.push('PRIMARY KEY');
@@ -124,9 +148,87 @@ async function kindOf(id: string): Promise<string> {
 }
 
 beforeEach(() => {
-  const raw = new Database(':memory:');
-  raw.exec(createTableSql());
+  raw = new Database(':memory:');
+  raw.exec(createTableSql(sessions));
+  raw.exec(createTableSql(messages));
   db = drizzle(raw);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  raw?.close();
+});
+
+describe('switchSessionWorkingDir visible history', () => {
+  async function seedHistory(source: 'feishu' | 'telegram', clearedAt: number | null) {
+    const sessionRepo = createImSessionRepo(
+      { agentKind: 'claude-code' } as ImOrchestratorConfig,
+      { ...ns, source },
+      { projectSwitching: true },
+    );
+    const created = await sessionRepo.createSession('bot1', 'u1');
+    await db.update(sessions).set({
+      sdkSessionId: 'old-sdk-session',
+      clearedAt,
+      listPreview: 'old preview',
+      listPreviewRole: 'assistant',
+    });
+    await db.insert(messages).values(
+      [
+        { id: 'before-clear', createdAt: 500 },
+        { id: 'at-clear', createdAt: 1000 },
+        { id: 'visible-history', createdAt: 1001 },
+        { id: 'rewound', createdAt: 2000, rewindAt: 2500 },
+        { id: 'after-switch', createdAt: 3001 },
+      ].map((message) => ({
+        ...message,
+        clientId: message.id,
+        sessionId: created.id,
+        role: 'assistant' as const,
+        content: JSON.stringify(message.id),
+      })),
+    );
+    vi.spyOn(Date, 'now').mockReturnValue(3000);
+    return created.id;
+  }
+
+  it.each([null, 1000])('Feishu preserves the existing clearedAt=%s and visible messages', async (clearedAt) => {
+    const sessionId = await seedHistory('feishu', clearedAt);
+    await switchSessionWorkingDir(sessionId, PROJECT_DIR, 'project', {
+      preserveVisibleHistory: true,
+    });
+    const [session] = await db.select().from(sessions);
+    expect(session).toMatchObject({
+      id: sessionId,
+      workingDir: PROJECT_DIR,
+      workspaceKind: 'project',
+      sdkSessionId: null,
+      clearedAt,
+      listPreview: null,
+      listPreviewRole: null,
+    });
+    const visible = await readMessagesList(sessionId, undefined, true);
+    expect(visible.map((message) => message.id)).toEqual(
+      clearedAt === null
+        ? ['after-switch', 'visible-history', 'at-clear', 'before-clear']
+        : ['after-switch', 'visible-history'],
+    );
+    expect(await db.select().from(messages)).toHaveLength(5);
+  });
+
+  it.each([undefined, { preserveVisibleHistory: false }])(
+    'other channels still advance clearedAt with options=%j',
+    async (options) => {
+      const sessionId = await seedHistory('telegram', 1000);
+      await switchSessionWorkingDir(sessionId, PROJECT_DIR, 'project', options);
+      const [session] = await db.select().from(sessions);
+      expect(session.clearedAt).toBe(3000);
+      expect(session.sdkSessionId).toBeNull();
+      expect((await readMessagesList(sessionId, undefined, true)).map((message) => message.id))
+        .toEqual(['after-switch']);
+      expect(await db.select().from(messages)).toHaveLength(5);
+    },
+  );
 });
 
 describe('workspaceKind 在复活 / upsert 冲突时的归属', () => {
@@ -241,6 +343,34 @@ describe('workspaceKind 在复活 / upsert 冲突时的归属', () => {
     expect(again.id).toBe(created.id);
     expect(await kindOf(created.id)).toBe('project');
     expect(again.workingDir).toBe(PROJECT_DIR);
+  });
+});
+
+describe('defaultWorkingDir：绑定项目目录的渠道（飞书）', () => {
+  function feishuRepo(projectDir?: string) {
+    return createImSessionRepo(
+      { agentKind: 'claude-code' } as ImOrchestratorConfig,
+      {
+        ...ns,
+        source: 'feishu',
+        ...(projectDir ? { defaultWorkingDir: () => projectDir } : {}),
+      } as unknown as ImSessionNamespace,
+      { projectSwitching: true },
+    );
+  }
+
+  it('新会话落在绑定目录并直接归入项目分组', async () => {
+    const r = feishuRepo(PROJECT_DIR);
+    const created = await r.createSession('cli_abc', 'ou_1');
+    expect(created.workingDir).toBe(PROJECT_DIR);
+    expect(await kindOf(created.id)).toBe('project');
+  });
+
+  it('未绑定（defaultWorkingDir 缺省）仍落托管目录、归「对话」', async () => {
+    const r = feishuRepo();
+    const created = await r.createSession('cli_abc', 'ou_1');
+    expect(created.workingDir).toBe(MANAGED_DIR);
+    expect(await kindOf(created.id)).toBe('dialogue');
   });
 });
 

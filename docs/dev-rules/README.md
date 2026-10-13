@@ -56,3 +56,5 @@
   device-link allowlist、手机版入口与功能类 PR 的远程／手机三选一门禁。
 - [`development-workflow.md`](development-workflow.md)：worktree dogfooding 会话契约、提 PR
   与直推 `main` 门禁，以及 Review P0／P1／P2 严重度口径。
+- [`personal-fork-development.md`](personal-fork-development.md)：个人 fork 双远端、
+  官方更新的集成分支、DCO / review 门禁，以及个人构建与正式版安装 / 更新的隔离边界。

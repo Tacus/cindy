@@ -40,6 +40,17 @@ export type ImChannelName =
   | 'dingtalk'
   | 'wecom';
 
+export interface FeishuBotSettings {
+  workingDir: string | null;
+  role: string;
+  rules: string;
+}
+
+export interface FeishuBotSettingsState extends FeishuBotSettings {
+  ownerScopeKey: string;
+  workingDirAvailable: boolean;
+}
+
 /**
  * IM 编排层的产品默认配置(由 main/im/index.ts 产品接线层注入)。
  * 形状与历史 FeishuOrchestratorConfig 完全一致。
@@ -89,6 +100,12 @@ export interface ImSessionNamespace {
   workspaceKind?: 'project' | 'dialogue';
   /** 该渠道 session 的工作目录(必须已创建好)。 */
   ensureWorkingDir(botContextId: string): string;
+  /**
+   * 新建会话的默认工作目录: 缺省 = ensureWorkingDir。渠道有「用户绑定的项目
+   * 目录」时(飞书)在这里返回项目目录 ?? 托管目录; ensureWorkingDir 仍只表示
+   * 托管目录本身 —— reconcile / 归属判断按它算, 改了会把已有会话全部搬走。
+   */
+  defaultWorkingDir?(botContextId: string): string;
   /** 渠道专属列(feishu: feishuBotAppId/feishuOpenId;slack: imBotContextId/imUserId)。 */
   extraInsertColumns(botContextId: string, userId: string): Record<string, unknown>;
   /**
@@ -177,6 +194,13 @@ export interface ImChannelAdapter {
    * ui.cards.project 必须提供(orchestrator 接线期断言)。
    */
   projectSwitching?: boolean;
+  /**
+   * 会话目录不等于托管目录即视为用户的项目(不启用 `/project` 命令)。飞书的
+   * 「绑定项目目录」用它把搬到项目目录的会话归到侧边栏项目分组、并让
+   * `/settings` 报项目名; 渠道必须同时满足: 除用户显式切换外, 行只会落在
+   * 托管目录或当前绑定目录里, 否则路径推断会把独立目录的会话误判成项目。
+   */
+  workspaceKindFromPath?: boolean;
   /**
    * thread = session 模型开关(slack: true)。开启后:
    *   - 入站事件的 scopeKey(thread root ts)参与会话路由与接管 binding

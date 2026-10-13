@@ -3540,6 +3540,26 @@
       "saveFailed": "Git 안전 설정 저장에 실패했습니다"
     },
     "feishuBot": {
+      "instructions": {
+        "title": "봇 설정",
+        "projectLabel": "프로젝트",
+        "projectHint": "봇은 이 프로젝트 디렉터리에서 작업합니다. 기본 디렉터리에 남아 있는 작업은 다음 메시지에서 이쪽으로 전환되고 컨텍스트가 다시 열립니다.",
+        "projectManaged": "Cindy 관리 전용 디렉터리 사용",
+        "projectReset": "연결 해제",
+        "projectUnavailable": "바인딩한 프로젝트 디렉터리에 지금 접근할 수 없습니다. 복구되기 전까지 새 작업은 Cindy 관리 디렉터리를 사용합니다.",
+        "projectSaved": "봇 프로젝트를 연결했습니다",
+        "projectResetDone": "봇 프로젝트 연결을 해제했습니다",
+        "projectFailed": "봇 프로젝트를 저장하지 못했습니다. 다시 시도하세요.",
+        "roleLabel": "역할",
+        "roleHint": "봇이 누구이고 어떻게 말하는지. 모든 메시지에 함께 전달됩니다.",
+        "rolePlaceholder": "예: 너는 내 Feishu 비서야. 간결하게 말하고 결론을 먼저, 세부 내용은 그다음에.",
+        "rulesLabel": "규칙",
+        "rulesHint": "반드시 지킬 경계와 업무 습관. 모든 메시지에 함께 전달되며 변경 즉시 반영됩니다.",
+        "rulesPlaceholder": "예: 코드를 바꾸기 전에 계획을 설명할 것. main 브랜치는 건드리지 말 것. 답변에 파일 경로를 포함할 것.",
+        "enrich": "AI로 다듬기",
+        "enrichFailed": "AI 다듬기에 실패했습니다. 텍스트는 변경되지 않았습니다",
+        "saveFailed": "봇 지침을 저장하지 못했습니다. 다시 시도하세요."
+      },
       "title": "Feishu / Lark 봇",
       "description": "Feishu 또는 Lark 봇을 통해 언제 어디서나 {{appName}}에 연결하여 작업하세요.",
       "statusAria": "Feishu / Lark 봇 상태: {{status}}",

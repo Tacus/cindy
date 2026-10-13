@@ -32,6 +32,9 @@
 - 现有说明：`[客户端说明]`（手机 / 另一台电脑）、`[消息来源]`（任务 / 伙伴 / 插件 /
   共享成员）、`[Scheduled run context]` 内的 `schedule:` 行、Orca
   `[From Orca Lead]` / `[From Orca Worker <角色> (worker_id: …)]`、IM `[渠道说明]`。
+  飞书个人 bot 的主人在设置页预设的角色 / 规则走 `<bot_instructions>` 块，每轮注入、
+  不落库，首行声明是主人预设而非本轮用户消息（实现见
+  `apps/desktop/src/main/im/feishu/botSettings.ts`）。
 - 切换引擎、上下文滚动、重建式分叉从落库数据重建交接摘要时，按 `agentMeta` 重新生成
   来源标记；`[UI_ACTION_TRIGGER]` 合成行仍不进交接。
 

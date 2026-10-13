@@ -3540,6 +3540,26 @@
       "saveFailed": "保存 Git 安全设置失败"
     },
     "feishuBot": {
+      "instructions": {
+        "title": "机器人设置",
+        "projectLabel": "项目",
+        "projectHint": "机器人在这个项目目录里干活；仍停在默认目录的任务，下一条消息会切过来并重开上下文。",
+        "projectManaged": "使用 Cindy 管理的专用目录",
+        "projectReset": "取消绑定",
+        "projectUnavailable": "绑定的项目目录当前无法访问；恢复前新任务使用 Cindy 管理的专用目录。",
+        "projectSaved": "机器人项目已绑定",
+        "projectResetDone": "机器人项目已取消绑定",
+        "projectFailed": "机器人项目未保存，请重试",
+        "roleLabel": "角色",
+        "roleHint": "机器人是谁、怎么说话。每次对话都会带上。",
+        "rolePlaceholder": "例如：你是我的飞书助理，说话简洁，先说结论再说细节。",
+        "rulesLabel": "规则",
+        "rulesHint": "必须遵守的边界与工作习惯。每次对话都会带上，改完立即生效。",
+        "rulesPlaceholder": "例如：改代码前先说明计划；不要动 main 分支；回答里带上文件路径。",
+        "enrich": "AI 丰富",
+        "enrichFailed": "AI 丰富失败，文本保持不变",
+        "saveFailed": "机器人指令未保存，请重试"
+      },
       "title": "飞书 / Lark 机器人",
       "description": "通过飞书或 Lark 机器人随时随地连接 {{appName}} 进行工作。",
       "statusAria": "飞书 / Lark 机器人状态：{{status}}",

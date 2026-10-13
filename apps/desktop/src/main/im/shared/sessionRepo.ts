@@ -389,12 +389,18 @@ export function createImSessionRepo(
     async prepareNewSession(botContextId, userId, scopeKey, providerSnapshot) {
       const assertAccount = captureChannelAccount();
       const id = ns.sessionIdFor(botContextId, userId, scopeKey);
-      const workingDir = ns.ensureWorkingDir(botContextId);
+      const workingDir = ns.defaultWorkingDir?.(botContextId) ?? ns.ensureWorkingDir(botContextId);
       const row = rowFromDefaults(
         id,
         workingDir,
         await resolveImSessionDefaults(config, providerSnapshot, ns.source),
       );
+      // 路径即项目的渠道: 新行按实际目录算归属(否则绑定项目的会话会先以
+      // 'dialogue' 插入, 要等下一条消息才自愈到项目分组)。
+      if (pathImpliesProject) {
+        row.workspaceKind =
+          workingDir === ns.ensureWorkingDir(botContextId) ? ns.workspaceKind : 'project';
+      }
       // 渠道可按 userId 覆写新会话权限档(telegram guest lane → 只读探索;
       // feishu 群 lane → 渠道设置「群聊新建任务权限档」)。
       const overridden = ns.permissionModeFor?.(userId) ?? null;
@@ -768,6 +774,7 @@ export async function switchSessionWorkingDir(
   sessionId: string,
   workingDir: string,
   workspaceKind: 'project' | 'dialogue',
+  options: { preserveVisibleHistory?: boolean } = {},
 ): Promise<void> {
   const db = getDbClient().drizzle;
   await db
@@ -776,7 +783,7 @@ export async function switchSessionWorkingDir(
       workingDir,
       workspaceKind,
       sdkSessionId: null,
-      clearedAt: Date.now(),
+      ...(options.preserveVisibleHistory ? {} : { clearedAt: Date.now() }),
       updatedAt: Date.now(),
       listPreview: null,
       listPreviewRole: null,

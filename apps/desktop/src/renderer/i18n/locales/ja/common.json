@@ -3540,6 +3540,26 @@
       "saveFailed": "Git セーフティ設定の保存に失敗しました"
     },
     "feishuBot": {
+      "instructions": {
+        "title": "ボット設定",
+        "projectLabel": "プロジェクト",
+        "projectHint": "ボットはこのプロジェクトディレクトリで作業します。既定のディレクトリに残っているタスクは、次のメッセージで切り替わり、コンテキストを開き直します。",
+        "projectManaged": "Cindy 管理の専用ディレクトリを使用",
+        "projectReset": "連携解除",
+        "projectUnavailable": "紐付けたプロジェクトディレクトリに現在アクセスできません。復旧するまで新しいタスクは Cindy 管理のディレクトリを使用します。",
+        "projectSaved": "ボットのプロジェクトを紐付けました",
+        "projectResetDone": "ボットのプロジェクトの紐付けを解除しました",
+        "projectFailed": "ボットのプロジェクトを保存できませんでした。もう一度お試しください。",
+        "roleLabel": "役割",
+        "roleHint": "ボットが誰で、どう話すか。毎回のメッセージに付きます。",
+        "rolePlaceholder": "例：あなたは私の Feishu アシスタント。簡潔に話し、結論を先に、詳細を後に。",
+        "rulesLabel": "ルール",
+        "rulesHint": "守るべき境界と仕事の習慣。毎回のメッセージに付き、変更はすぐ反映されます。",
+        "rulesPlaceholder": "例：コードを変更する前に計画を説明する。main ブランチには触れない。回答にファイルパスを含める。",
+        "enrich": "AI でブラッシュアップ",
+        "enrichFailed": "AI によるブラッシュアップに失敗しました。テキストは変更されていません",
+        "saveFailed": "ボットの指示を保存できませんでした。もう一度お試しください。"
+      },
       "title": "Feishu / Lark ボット",
       "description": "Feishu または Lark ボット経由で {{appName}} に接続し、いつでもどこでも作業できます。",
       "statusAria": "Feishu / Lark ボットの状態: {{status}}",

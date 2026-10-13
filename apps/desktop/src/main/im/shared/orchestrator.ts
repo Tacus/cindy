@@ -113,9 +113,11 @@ export function createImOrchestrator(adapter: ImChannelAdapter): ImOrchestrator 
   }
 
   const repo = createImSessionRepo(adapter.config, adapter.sessions, {
-    // 归属能否按路径推断, 取决于这个渠道有没有 `/project` —— 唯一真相在 adapter 上,
-    // 不在 sessions 里再抄一份, 免得两处漂移。
-    projectSwitching: adapter.projectSwitching === true,
+    // 归属能否按路径推断, 取决于这个渠道有没有「目录 != 托管目录即项目」的语义:
+    // `/project`(telegram)天然满足; 飞书靠 workspaceKindFromPath 声明的
+    // 「绑定项目目录」满足。唯一真相在 adapter 上, 不在 sessions 里再抄一份。
+    projectSwitching:
+      adapter.projectSwitching === true || adapter.workspaceKindFromPath === true,
   });
   const cards = createCardBuilders(adapter.ui, repo.getDefaultEffortFor);
   const defaultRouteSync = createImChannelDefaultRouteSync({

@@ -527,6 +527,8 @@ interface WechatChannelSettingsState {
   workingDirAvailable: boolean;
 }
 
+type FeishuBotSettingsState = import('../main/im/shared/types').FeishuBotSettingsState;
+
 type DiscordBotSessionAuthCheckResult = {
   ok: boolean;
   missing: 'gateway-key' | 'agent-oauth' | 'provider-key' | 'provider-disconnected' | null;
@@ -2257,6 +2259,24 @@ interface ElectronAPI {
     }>;
     clear: () => Promise<{ ok: true }>;
     setLifecycleAnnouncement: (enabled: boolean) => Promise<{ ok: true }>;
+    getBotSettings: () => Promise<FeishuBotSettingsState>;
+    setBotInstructions: (payload: {
+      role?: string;
+      rules?: string;
+      ownerScopeKey: string;
+    }) => Promise<FeishuBotSettingsState>;
+    chooseWorkingDirectory: (ownerScopeKey: string) => Promise<{
+      canceled: boolean;
+      state: FeishuBotSettingsState;
+    }>;
+    resetWorkingDirectory: (ownerScopeKey: string) => Promise<FeishuBotSettingsState>;
+    enrichInstructions: (payload: {
+      field: 'role' | 'rules';
+      text: string;
+      ownerScopeKey: string;
+    }) => Promise<{
+      text: string;
+    }>;
     registrationBegin: (service: 'feishu' | 'lark') => Promise<FeishuBotRegistrationBeginResult>;
     registrationCancel: () => Promise<{ ok: true }>;
     onStatusChange: (

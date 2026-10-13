@@ -36,6 +36,7 @@ import { PROVIDER_GROUP_IPC, type ProviderGroupCommand } from '../shared/provide
 import type { MobileCodexRateLimitsResult, MobileCodexRateLimitResetResult } from '@cindy/maker-shared/device-link-contract';
 import type { AppearanceSettings } from '../shared/appearanceSettings';
 import type { DialogueWorkspaceSettingsState } from '../shared/dialogueWorkspaceSettings';
+import type { FeishuBotSettingsState } from '../main/im/shared/types';
 import type {
   CustomProviderUpdateOptions,
   CustomProviderUpdateResult,
@@ -2242,6 +2243,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     clear: (): Promise<{ ok: true }> => ipcRenderer.invoke('feishuBot:clear'),
     setLifecycleAnnouncement: (enabled: boolean): Promise<{ ok: true }> =>
       ipcRenderer.invoke('feishuBot:set-lifecycle-announcement', { enabled }),
+    // 行为设置(项目绑定 / 角色 / 规则): 项目改动会同步迁移现有渠道行并重开上下文。
+    getBotSettings: (): Promise<FeishuBotSettingsState> =>
+      ipcRenderer.invoke('feishuBot:get-bot-settings'),
+    setBotInstructions: (payload: {
+      role?: string;
+      rules?: string;
+      ownerScopeKey: string;
+    }): Promise<FeishuBotSettingsState> => ipcRenderer.invoke('feishuBot:set-bot-instructions', payload),
+    chooseWorkingDirectory: (ownerScopeKey: string): Promise<{
+      canceled: boolean;
+      state: FeishuBotSettingsState;
+    }> => ipcRenderer.invoke('feishuBot:choose-working-directory', ownerScopeKey),
+    resetWorkingDirectory: (ownerScopeKey: string): Promise<FeishuBotSettingsState> =>
+      ipcRenderer.invoke('feishuBot:reset-working-directory', ownerScopeKey),
+    enrichInstructions: (payload: {
+      field: 'role' | 'rules';
+      text: string;
+      ownerScopeKey: string;
+    }): Promise<{ text: string }> =>
+      ipcRenderer.invoke('feishuBot:enrich-instructions', payload),
     registrationBegin: (
       service: 'feishu' | 'lark',
     ): Promise<{

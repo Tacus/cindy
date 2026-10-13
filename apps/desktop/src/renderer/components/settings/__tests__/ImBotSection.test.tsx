@@ -70,6 +70,9 @@ vi.mock('../ImChannelSettingsCard', async (importOriginal) => ({
 vi.mock('../ImDefaultSettingsSection', () => ({
   ImDefaultSettingsSection: () => null,
 }));
+vi.mock('../FeishuBotInstructionsSection', () => ({
+  FeishuBotInstructionsSection: () => null,
+}));
 vi.mock('../DingTalkBotSection', () => ({
   DingTalkBotSection: () => <div data-testid="dingtalk-bot" />,
 }));

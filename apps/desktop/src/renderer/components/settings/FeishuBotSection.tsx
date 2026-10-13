@@ -12,6 +12,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { savedCredentialsNoteKey, shouldShowSavedCredentialsCard } from './feishuBotPresentation';
 import { ImChannelSettingsCard, useImChannelSettingsSummary } from './ImChannelSettingsCard';
 import { ImDefaultSettingsSection } from './ImDefaultSettingsSection';
+import { FeishuBotInstructionsSection } from './FeishuBotInstructionsSection';
 import { FeishuBotNotificationSection } from './FeishuBotNotificationSection';
 
 const APP_LAUNCHER_URL: Record<FeishuBotService, string> = {
@@ -149,6 +150,8 @@ export function FeishuBotSection({
       }
     >
       <ImDefaultSettingsSection channel="feishu" embedded onSummaryChange={setRouteSummary} />
+      <div className="h-px w-full bg-[var(--border-default)]" />
+      <FeishuBotInstructionsSection />
       <div className="h-px w-full bg-[var(--border-default)]" />
       {showSavedCredentialsCard ? (
         <SavedCredentialsCard

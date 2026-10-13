@@ -87,6 +87,16 @@ export default {
       aliases: ['Lark bot'],
     },
     {
+      // 飞书 bot 的「机器人设置」区块（项目 / 角色 / 规则），与卡片同一目标：
+      // 搜索命中后展开卡片并高亮。
+      id: 'imBot.feishu.instructions',
+      tab: 'im-bot',
+      targetId: 'personal-im-feishu',
+      titleKey: 'settings.feishuBot.instructions.title',
+      sectionKey: 'settings.imBot.groups.personal',
+      aliases: ['Feishu project', '飞书项目', '角色', '规则', 'AI 丰富', 'role', 'rules'],
+    },
+    {
       id: 'imBot.dingtalk',
       tab: 'im-bot',
       targetId: 'personal-im-dingtalk',

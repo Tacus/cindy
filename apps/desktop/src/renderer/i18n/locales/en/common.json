@@ -3565,6 +3565,26 @@
       "saveFailed": "Failed to save Git safety setting"
     },
     "feishuBot": {
+      "instructions": {
+        "title": "Bot Setup",
+        "projectLabel": "Project",
+        "projectHint": "The bot works inside this project folder. Tasks still on the default folder switch over on their next message and restart their context.",
+        "projectManaged": "Use Cindy's managed folder",
+        "projectReset": "Unbind",
+        "projectUnavailable": "The bound project folder is not accessible right now. New tasks use Cindy's managed folder until it comes back.",
+        "projectSaved": "Bot project bound",
+        "projectResetDone": "Bot project unbound",
+        "projectFailed": "Bot project was not saved. Try again",
+        "roleLabel": "Role",
+        "roleHint": "Who the bot is and how it speaks. Added to every message.",
+        "rolePlaceholder": "e.g. You are my Feishu assistant: concise, conclusion first, details after.",
+        "rulesLabel": "Rules",
+        "rulesHint": "Boundaries and working habits it must follow. Added to every message; changes take effect immediately.",
+        "rulesPlaceholder": "e.g. Explain the plan before editing code; never touch main; include file paths in answers.",
+        "enrich": "Enhance with AI",
+        "enrichFailed": "AI enhancement failed; text unchanged",
+        "saveFailed": "Bot instructions were not saved. Try again"
+      },
       "title": "Feishu / Lark Bot",
       "description": "Connect to {{appName}} via a Feishu or Lark bot to work anywhere, anytime.",
       "statusAria": "Feishu / Lark Bot status: {{status}}",

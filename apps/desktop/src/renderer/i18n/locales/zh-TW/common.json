@@ -3540,6 +3540,26 @@
       "saveFailed": "儲存 Git 安全設定失敗"
     },
     "feishuBot": {
+      "instructions": {
+        "title": "機器人設定",
+        "projectLabel": "專案",
+        "projectHint": "機器人在這個專案目錄裡工作；仍停在預設目錄的任務，下一則訊息會切換過來並重開上下文。",
+        "projectManaged": "使用 Cindy 管理的專用目錄",
+        "projectReset": "改用預設目錄",
+        "projectUnavailable": "指定的專案目錄目前無法存取；恢復前新任務會使用 Cindy 管理的專用目錄。",
+        "projectSaved": "機器人專案目錄已更新",
+        "projectResetDone": "機器人已回到預設目錄",
+        "projectFailed": "機器人專案未儲存，請重試",
+        "roleLabel": "角色",
+        "roleHint": "機器人是誰、怎麼說話。每則訊息都會帶上。",
+        "rolePlaceholder": "例如：你是我的飛書助理，說話簡潔，先說結論再說細節。",
+        "rulesLabel": "規則",
+        "rulesHint": "必須遵守的界線與工作習慣。每則訊息都會帶上，改完立即生效。",
+        "rulesPlaceholder": "例如：改程式碼前先說明計畫；不要動 main 分支；回答裡帶上檔案路徑。",
+        "enrich": "AI 豐富",
+        "enrichFailed": "AI 豐富失敗，文字維持不變",
+        "saveFailed": "機器人指令未儲存，請重試"
+      },
       "title": "飛書 / Lark 機器人",
       "description": "透過飛書或 Lark 機器人隨時隨地連線 {{appName}} 進行工作。",
       "statusAria": "飛書 / Lark 機器人狀態：{{status}}",
