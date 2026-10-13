@@ -82,8 +82,21 @@ export const PACKAGED_APP_NAME_BY_REGION = Object.freeze({
   dev: 'CindyDev',
 });
 
-export function packagedAppName(region = 'global') {
-  const name = PACKAGED_APP_NAME_BY_REGION[region];
+/**
+ * 个人构建身份(fork-local)的打包产物基名镜像。与
+ * brandIdentity.ts 的 PERSONAL_BRAND_IDENTITY.executableNameByRegion 同源
+ * (同样由 scripts/__tests__/brand-identity-sync.test.mjs 断言),
+ * 仅当 CINDY_BUILD_IDENTITY=personal 时选用。
+ */
+export const PACKAGED_APP_NAME_BY_REGION_PERSONAL = Object.freeze({
+  cn: 'CindyPersonal',
+  global: 'CindyPersonal',
+  dev: 'CindyPersonalDev',
+});
+
+export function packagedAppName(region = 'global', buildIdentity = process.env.CINDY_BUILD_IDENTITY) {
+  const personal = String(buildIdentity ?? '').trim().toLowerCase() === 'personal';
+  const name = (personal ? PACKAGED_APP_NAME_BY_REGION_PERSONAL : PACKAGED_APP_NAME_BY_REGION)[region];
   if (!name) throw new Error(`unknown region: ${region}`);
   return name;
 }

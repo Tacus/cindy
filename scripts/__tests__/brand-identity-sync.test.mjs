@@ -72,6 +72,25 @@ test('ci/lib.mjs PACKAGED_APP_NAME_BY_REGION mirrors brandIdentity.executableNam
   assert.deepEqual(actual, expected);
 });
 
+test('ci/lib.mjs PACKAGED_APP_NAME_BY_REGION_PERSONAL mirrors PERSONAL_BRAND_IDENTITY.executableNameByRegion', () => {
+  const personalBlock = /PERSONAL_BRAND_IDENTITY[\s\S]*?\nexport function brandIdentityFor/.exec(
+    brandIdentitySource,
+  );
+  assert.ok(personalBlock, 'brandIdentity.ts PERSONAL_BRAND_IDENTITY block not found');
+  const expected = extractRegionMap(
+    personalBlock[0],
+    'executableNameByRegion',
+    'PERSONAL_BRAND_IDENTITY.executableNameByRegion',
+  );
+  const libSource = readSource('apps/desktop/scripts/ci/lib.mjs');
+  const actual = extractRegionMap(
+    libSource,
+    'PACKAGED_APP_NAME_BY_REGION_PERSONAL',
+    'ci/lib.mjs PACKAGED_APP_NAME_BY_REGION_PERSONAL',
+  );
+  assert.deepEqual(actual, expected);
+});
+
 test('smoke-packaged.mjs PACKAGED_APP_NAME mirrors brandIdentity.executableName', () => {
   const smokeSource = readSource('apps/desktop/scripts/smoke-packaged.mjs');
   const value = extractLiteral(
