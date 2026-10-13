@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PERSONAL_BRAND_IDENTITY } from '@cindy/maker-shared/brand-identity';
 import { resolveRegionUserDataDirName } from '../regionUserData';
 
 /**
@@ -59,5 +60,53 @@ describe('resolveRegionUserDataDirName', () => {
         envUserDataDir: '/tmp/custom-profile',
       }),
     ).toBe('CindyGlobal');
+  });
+});
+
+/**
+ * 个人构建身份(fork-local)必须显式覆写 userData 目录:官方 cn 走 productName
+ * 默认的 Cindy,个人 cn 的 CindyPersonalCN 虽同名规则不同,也必须返回覆写值;
+ * 个人 global 的自定义目录 CindyPersonal 恰好不等于 productName 默认 Cindy,
+ * 同样显式返回 —— 只有官方 cn 才允许 null(走原生路径)。
+ */
+describe('个人构建身份的 userData 目录', () => {
+  const ARGV = ['CindyPersonal.exe'] as const;
+
+  it('packaged 下 cn / global / dev 都显式覆写为个人目录', () => {
+    expect(
+      resolveRegionUserDataDirName({
+        isPackaged: true,
+        region: 'cn',
+        argv: ARGV,
+        identity: PERSONAL_BRAND_IDENTITY,
+      }),
+    ).toBe('CindyPersonalCN');
+    expect(
+      resolveRegionUserDataDirName({
+        isPackaged: true,
+        region: 'global',
+        argv: ARGV,
+        identity: PERSONAL_BRAND_IDENTITY,
+      }),
+    ).toBe('CindyPersonal');
+    expect(
+      resolveRegionUserDataDirName({
+        isPackaged: true,
+        region: 'dev',
+        argv: ARGV,
+        identity: PERSONAL_BRAND_IDENTITY,
+      }),
+    ).toBe('CindyPersonalDev');
+  });
+
+  it('显式 --user-data-dir 仍优先,个人身份也不例外', () => {
+    expect(
+      resolveRegionUserDataDirName({
+        isPackaged: true,
+        region: 'global',
+        argv: ['CindyPersonal.exe', '--user-data-dir=C:\\tmp\\personal-smoke'],
+        identity: PERSONAL_BRAND_IDENTITY,
+      }),
+    ).toBeNull();
   });
 });

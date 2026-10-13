@@ -14,6 +14,7 @@ vi.mock('electron', () => ({
 vi.mock('../../shared/brandRegion', () => ({
   CURRENT_CINDY_REGION: 'cn',
   CURRENT_APP_ID: 'com.xd.cindycn',
+  CURRENT_EXECUTABLE_NAME: 'Cindy',
 }));
 vi.mock('../logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() }),

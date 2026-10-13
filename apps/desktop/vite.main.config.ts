@@ -47,6 +47,11 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_CINDY_AUTH_REGION': JSON.stringify(
         readViteEnv('VITE_CINDY_AUTH_REGION'),
       ),
+      // 构建身份(官方 / 个人 fork):由 forge.config 从 CINDY_BUILD_IDENTITY
+      // 归一化后回写,默认 official——未注入时既有行为逐字符不变。
+      'import.meta.env.VITE_CINDY_BUILD_IDENTITY': JSON.stringify(
+        readViteEnv('VITE_CINDY_BUILD_IDENTITY'),
+      ),
       // 本区与对端的两份端点清单自举基址(业务端点已全部改走运行期清单,
       // 旧的 VITE_API_BASE_URL 等端点 define 随之退役)。dev 构建也注入 cn 值,
       // `--endpoints-cdn` 才能零配置直连线上清单。

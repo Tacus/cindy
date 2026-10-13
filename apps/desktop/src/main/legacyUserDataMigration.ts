@@ -34,7 +34,7 @@ import {
   BRAND_IDENTITY,
   legacyBrandUserDataDirNames,
 } from '@cindy/maker-shared/brand-identity';
-import { CURRENT_CINDY_REGION } from '../shared/brandRegion.js';
+import { CURRENT_CINDY_REGION, IS_OFFICIAL_BUILD_IDENTITY } from '../shared/brandRegion.js';
 
 import { createLogger } from './logger';
 
@@ -604,6 +604,9 @@ export async function runLegacyUserDataMigrationForUser(userId: string): Promise
   // global 构建(同机双装)是全新身份,把 cn 的历史数据导进 global 库会
   // 跨区域串台(两边 auth 后端不同,会话 / 凭证对不上)。
   if (CURRENT_CINDY_REGION !== 'cn') return;
+  // 个人构建身份:独立 profile 是全新身份,不导入官方 / legacy 数据
+  // (会把官方数据复制进个人库,且与官方实例共用历史游标)。
+  if (!IS_OFFICIAL_BUILD_IDENTITY) return;
   // dev 沙箱 / userData 覆写:不探测、不弹窗、不写 marker,纯跳过(见上方谓词注释)。
   if (
     shouldSkipLegacyMigrationForDevSandbox({

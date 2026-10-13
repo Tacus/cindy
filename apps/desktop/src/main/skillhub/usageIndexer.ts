@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
 import { brandUserDataDirName } from '@cindy/maker-shared/brand-identity';
-import { CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
+import { CURRENT_BRAND_IDENTITY, CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
 
 import type { DbClient } from '../localDb/client/DbClient.js';
 import { getCurrentDbClientSnapshot, getDbClient, type CurrentDbClientSnapshot } from '../localDb/client/current.js';
@@ -512,7 +512,7 @@ function defaultXdtUserDataDir(
   env: NodeJS.ProcessEnv,
 ): string {
   // 按现有区域目录映射取值(global=CindyGlobal,cn=Cindy，同机双装分库)。
-  const dirName = brandUserDataDirName(CURRENT_CINDY_REGION);
+  const dirName = brandUserDataDirName(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY);
   if (platform === 'darwin') return path.join(homeDir, 'Library', 'Application Support', dirName);
   if (platform === 'win32') return path.join(appDataDir, dirName);
   return path.join(env.XDG_CONFIG_HOME ?? path.join(homeDir, '.config'), dirName);

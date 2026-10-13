@@ -9,7 +9,7 @@ import { setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
 import { exit, stderr } from 'node:process';
 import { BRAND_IDENTITY } from '@cindy/maker-shared/brand-identity';
 import { refreshBrowserRuntimeConfigDir } from '@cindy/browser-control-runtime/config-dir';
-import { CURRENT_CINDY_REGION } from '../shared/brandRegion.js';
+import { CURRENT_BRAND_IDENTITY, CURRENT_CINDY_REGION, CURRENT_EXECUTABLE_NAME, IS_OFFICIAL_BUILD_IDENTITY } from '../shared/brandRegion.js';
 import { resolveRegionUserDataDirName } from './regionUserData.js';
 import { createLogger, initLogger } from './logger.js';
 import { beginDesktopDevInstance, type DesktopDevMode } from './devStartupStatus.js';
@@ -32,17 +32,25 @@ configureLinuxPasswordStore({
 });
 
 // 正式目录保持历史兼容：global 构建继续使用 CindyGlobal，cn 版继续使用
-// productName 默认的 Cindy；dev 也按构建区域选择对应 profile。必须在
+// productName 默认的 Cindy；dev 也按构建区域选择对应 profile。个人构建身份
+// (fork-local) 使用自己的区域目录，绝不与官方 profile 共库。必须在
 // initLogger()(packaged 日志目录)、crashReporter、单实例锁与一切 userData
-// 读取之前完成区域映射。
+// 读取之前完成区域 / 身份映射。
 const regionUserDataDirName = resolveRegionUserDataDirName({
   isPackaged: app.isPackaged,
   region: CURRENT_CINDY_REGION,
   argv: process.argv,
   envUserDataDir: process.env.XDT_USER_DATA_DIR,
+  identity: CURRENT_BRAND_IDENTITY,
 });
 if (regionUserDataDirName) {
   app.setPath('userData', path.join(app.getPath('appData'), regionUserDataDirName));
+}
+// 个人构建改名只为了让派生自 app.name 的东西(如 macOS safeStorage 钥匙串条目
+// "<app.name> Safe Storage")与官方安装分开;userData 上面已显式 pin,不受影响。
+// 只在 packaged 生效:dev 沙箱的钥匙串身份标记机制仍按官方词表判定。
+if (!IS_OFFICIAL_BUILD_IDENTITY && app.isPackaged) {
+  app.setName(CURRENT_EXECUTABLE_NAME);
 }
 // A verified version handoff retains the launching original's profile and keychain identity.
 prepareCindyVersionStartup();

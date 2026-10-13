@@ -65,7 +65,10 @@ vi.mock('../../logger.js', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }));
 vi.mock('../../i18n.js', () => ({ t: (key: string) => key }));
-vi.mock('../../../shared/brandRegion.js', () => ({ CURRENT_CINDY_REGION: 'global' }));
+vi.mock('../../../shared/brandRegion.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../shared/brandRegion.js')>()),
+  CURRENT_CINDY_REGION: 'global',
+}));
 vi.mock('@cindy/maker-shared/cindy-make-feature', () => ({
   get CINDY_MAKE_ENABLED() {
     return h.makeEnabled;

@@ -2,15 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { BRAND_NAME } from '../branding.js';
 import {
   BRAND_IDENTITY,
+  DEFAULT_CINDY_BUILD_IDENTITY,
   DEFAULT_CINDY_REGION,
+  PERSONAL_BRAND_IDENTITY,
   allDeepLinkSchemes,
   allUserDataDirNames,
   brandAppId,
   brandBundleIdPrefix,
   brandExecutableName,
+  brandIdentityFor,
   brandUserDataDirName,
   legacyBrandUserDataDirNames,
   legacyDialogueUserDataDirNames,
+  resolveCindyBuildIdentity,
   resolveCindyRegion,
 } from '../brandIdentity.js';
 
@@ -191,5 +195,72 @@ describe('派生 helper', () => {
     };
     expect(allDeepLinkSchemes(legacyLike)).toEqual(['xdt-maker']);
     expect(allUserDataDirNames('cn', legacyLike)).toEqual(['xdt-maker']);
+  });
+});
+
+/**
+ * 个人构建身份(fork-local,`CINDY_BUILD_IDENTITY=personal`)是官方身份的叠加层:
+ * 默认关闭时官方行为逐字符不变;开启时必须与官方身份在同机并存互不干扰 ——
+ * exe / appId / userData / 深链 scheme 全部带 personal 限定且与官方无交集。
+ */
+describe('个人构建身份', () => {
+  it('解析:空值默认官方;official / personal 认;非法值 fail closed', () => {
+    expect(DEFAULT_CINDY_BUILD_IDENTITY).toBe('official');
+    expect(resolveCindyBuildIdentity()).toBe('official');
+    expect(resolveCindyBuildIdentity('')).toBe('official');
+    expect(resolveCindyBuildIdentity(' Personal ')).toBe('personal');
+    expect(resolveCindyBuildIdentity('official')).toBe('official');
+    expect(() => resolveCindyBuildIdentity('fork')).toThrow(/Invalid Cindy build identity/);
+  });
+
+  it('brandIdentityFor:缺省 / 官方 → 官方档案;personal → 个人档案', () => {
+    expect(brandIdentityFor()).toBe(BRAND_IDENTITY);
+    expect(brandIdentityFor('official')).toBe(BRAND_IDENTITY);
+    expect(brandIdentityFor('personal')).toBe(PERSONAL_BRAND_IDENTITY);
+  });
+
+  it('逐区域与官方身份无交集(exe / appId / userData),cn 显式覆写不落 productName 默认目录', () => {
+    for (const region of ['cn', 'global', 'dev'] as const) {
+      expect(PERSONAL_BRAND_IDENTITY.executableNameByRegion[region]).not.toBe(
+        BRAND_IDENTITY.executableNameByRegion[region],
+      );
+      expect(PERSONAL_BRAND_IDENTITY.appIdByRegion[region]).not.toBe(
+        BRAND_IDENTITY.appIdByRegion[region],
+      );
+      expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion[region]).not.toBe(
+        BRAND_IDENTITY.userDataDirNameByRegion[region],
+      );
+    }
+    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.cn).toBe('CindyPersonalCN');
+    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.global).toBe('CindyPersonal');
+    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.dev).toBe('CindyPersonalDev');
+    expect(PERSONAL_BRAND_IDENTITY.executableName).toBe('CindyPersonal');
+  });
+
+  it('深链不含官方 scheme,userData / legacy 匹配集只认自己', () => {
+    expect(PERSONAL_BRAND_IDENTITY.primaryScheme).toBe('cindy-personal');
+    expect(allDeepLinkSchemes(PERSONAL_BRAND_IDENTITY)).toEqual(['cindy-personal']);
+    for (const scheme of allDeepLinkSchemes(PERSONAL_BRAND_IDENTITY)) {
+      expect(allDeepLinkSchemes()).not.toContain(scheme);
+    }
+    expect(allUserDataDirNames('cn', PERSONAL_BRAND_IDENTITY)).toEqual(['CindyPersonalCN']);
+    expect(allUserDataDirNames('global', PERSONAL_BRAND_IDENTITY)).toEqual(['CindyPersonal']);
+    expect(allUserDataDirNames('dev', PERSONAL_BRAND_IDENTITY)).toEqual(['CindyPersonalDev']);
+    expect(legacyBrandUserDataDirNames(PERSONAL_BRAND_IDENTITY)).toEqual([]);
+    expect(legacyDialogueUserDataDirNames('cn', PERSONAL_BRAND_IDENTITY)).toEqual([]);
+    expect(PERSONAL_BRAND_IDENTITY.legacyDbFilePrefixes).toEqual([]);
+  });
+
+  it('文件名段合法;profile 内共用的前缀与官方同值(cindy / cindy-updater)', () => {
+    const dirSafe = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
+    expect(PERSONAL_BRAND_IDENTITY.executableName).toMatch(dirSafe);
+    expect(PERSONAL_BRAND_IDENTITY.userDataDirName).toMatch(dirSafe);
+    for (const region of ['cn', 'global', 'dev'] as const) {
+      expect(PERSONAL_BRAND_IDENTITY.executableNameByRegion[region]).toMatch(dirSafe);
+      expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion[region]).toMatch(dirSafe);
+    }
+    // 前缀只在自家 userData / 版本无关包内生效,与官方同值不构成跨安装冲突。
+    expect(PERSONAL_BRAND_IDENTITY.dbFilePrefix).toBe(BRAND_IDENTITY.dbFilePrefix);
+    expect(PERSONAL_BRAND_IDENTITY.updaterName).toBe(BRAND_IDENTITY.updaterName);
   });
 });

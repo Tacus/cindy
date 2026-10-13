@@ -256,3 +256,85 @@ export function legacyBrandUserDataDirNames(
 ): readonly string[] {
   return identity.legacyUserDataDirNames;
 }
+
+// ── 个人构建身份(fork-local,默认关闭) ────────────────────────────────────────
+// 目的:让个人 fork 的构建与官方安装**同机并存互不干扰** —— 独立 exe 名 /
+// appId / userData 目录 / 快捷方式名 / 深链 scheme;不注册官方 `cindy://`,
+// 不接管官方快捷方式、右键菜单与安装器进程检查;官方身份(含 cn/global/dev
+// 三个区域)保持逐字符不变。仅在打包时设置 `CINDY_BUILD_IDENTITY=personal`
+// 才启用(见 apps/desktop/forge.config.ts 与
+// docs/dev-rules/personal-fork-development.md「个人构建身份」)。
+//
+// 边界(2026-10-13 fork 本地实现):
+//   - 不是第四个发行区域,不改 region-and-editions.md 的三值模型;区域仍由
+//     CINDY_AUTH_REGION 决定端点与登录域,本 overlay 只改标识符层。
+//   - 不参与官方热更新:个人构建沿用占位版本 0.0.0(updateService 短路),
+//     且 scheme/appId 独立,官方更新器不会把它当作自己的安装体。
+//   - 不迁移官方 profile 与 legacy 数据:legacy 列表清空,userData 独立。
+export type CindyBuildIdentity = 'official' | 'personal';
+
+/** 默认身份:未显式注入时的官方身份,保证既有构建行为零变化。 */
+export const DEFAULT_CINDY_BUILD_IDENTITY: CindyBuildIdentity = 'official';
+
+/** 归一化构建身份输入(空值 → 官方;非法值抛错,宁可失败也不默默打错身份)。 */
+export function resolveCindyBuildIdentity(raw?: string | null): CindyBuildIdentity {
+  const v = raw?.trim().toLowerCase();
+  if (!v) return DEFAULT_CINDY_BUILD_IDENTITY;
+  if (v === 'official' || v === 'personal') return v;
+  throw new Error(`Invalid Cindy build identity: ${raw}; expected official or personal`);
+}
+
+/**
+ * 个人构建身份档案。所有派生标识符带 `personal` 限定:
+ *   - exe / 快捷方式 / 安装目录:cn/global `CindyPersonal`,dev `CindyPersonalDev`;
+ *   - appId(Windows AUMID / macOS bundle id)按区域再限定,绝不等于官方值;
+ *   - userData:cn `CindyPersonalCN`(官方 cn 用 productName 默认目录,
+ *     这里必须显式覆写)、global `CindyPersonal`、dev `CindyPersonalDev`;
+ *   - 深链只注册 `cindy-personal://`:官方 `cindy://` / `xdt-maker://` 不碰。
+ * dbFilePrefix / updaterName / cdnPrefix 与官方同值 —— 它们只在自家
+ * userData 目录 / 版本无关包内生效,不构成跨安装冲突。
+ */
+export const PERSONAL_BRAND_IDENTITY: BrandIdentity = Object.freeze({
+  ...BRAND_IDENTITY,
+  displayName: 'Cindy Personal',
+  executableName: 'CindyPersonal',
+  executableNameByRegion: Object.freeze({
+    cn: 'CindyPersonal',
+    global: 'CindyPersonal',
+    dev: 'CindyPersonalDev',
+  }),
+  appIdByRegion: Object.freeze({
+    cn: 'com.xd.cindycn.personal',
+    global: 'com.xd.cindy.personal',
+    dev: 'com.xd.cindydev.personal',
+  }),
+  primaryScheme: 'cindy-personal',
+  legacySchemes: Object.freeze([]),
+  userDataDirName: 'CindyPersonal',
+  userDataDirNameByRegion: Object.freeze({
+    cn: 'CindyPersonalCN',
+    global: 'CindyPersonal',
+    dev: 'CindyPersonalDev',
+  }),
+  legacyUserDataDirNames: Object.freeze([]),
+  legacyUserDataDirNamesByRegion: Object.freeze({
+    cn: Object.freeze([]),
+    global: Object.freeze([]),
+    dev: Object.freeze([]),
+  }),
+  legacyDialogueUserDataDirNamesByRegion: Object.freeze({
+    cn: Object.freeze([]),
+    global: Object.freeze([]),
+    dev: Object.freeze([]),
+  }),
+  legacyDbFilePrefixes: Object.freeze([]),
+});
+
+/** 构建身份 → 身份档案;默认/未知输入一律返回官方档案。 */
+export function brandIdentityFor(
+  buildIdentity?: CindyBuildIdentity | null,
+): BrandIdentity {
+  return resolveCindyBuildIdentity(buildIdentity) === 'personal'
+    ? PERSONAL_BRAND_IDENTITY
+    : BRAND_IDENTITY;
+}

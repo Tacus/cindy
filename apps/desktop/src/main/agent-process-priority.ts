@@ -32,7 +32,7 @@ import { app } from 'electron';
 
 import { allUserDataDirNames } from '@cindy/maker-shared/brand-identity';
 
-import { CURRENT_CINDY_REGION } from '../shared/brandRegion.js';
+import { CURRENT_BRAND_IDENTITY, CURRENT_CINDY_REGION } from '../shared/brandRegion.js';
 import { buildClaudePathMarkers } from './claude-orphan-reaper.js';
 import { createLogger } from './logger';
 import {
@@ -124,15 +124,15 @@ export function buildLinuxPathMarkers(
 }
 
 const CLAUDE_MARKERS = [
-  ...buildClaudePathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION)),
-  ...buildLinuxPathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION), 'claude-code'),
+  ...buildClaudePathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY)),
+  ...buildLinuxPathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY), 'claude-code'),
   'apps\\claude-code-bin\\',
   'apps/claude-code-bin/',
 ];
 
 const CODEX_MARKERS = [
-  ...buildCodexPathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION)),
-  ...buildLinuxPathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION), 'codex'),
+  ...buildCodexPathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY)),
+  ...buildLinuxPathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY), 'codex'),
   'apps\\codex-bin\\',
   'apps\\codex-package-bin\\',
   'apps/codex-package-bin/',

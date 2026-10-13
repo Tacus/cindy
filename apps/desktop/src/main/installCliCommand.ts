@@ -38,26 +38,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { brandExecutableName } from '@cindy/maker-shared/brand-identity';
-
-import { createLogger, maskPath } from './logger';
+import { CURRENT_EXECUTABLE_NAME } from '../shared/brandRegion.js';
 import {
   APPLICATION_MENU_LABELS,
   type ApplicationMenuLabels,
   type ApplicationMenuLocale,
 } from './applicationMenuLabels.js';
-import { CURRENT_CINDY_REGION } from '../shared/brandRegion.js';
+import { createLogger, maskPath } from './logger';
 
 const execFileAsync = promisify(execFile);
 const log = createLogger('installCliCommand');
 
 /**
- * 装进 PATH 的命令名,**跟随本构建 edition 品牌**:由区域可执行名小写化而来
- * (global/cn 展示名统一为 Cindy → `cindy`;内部 dev 构建 → `cindydev`)。
+ * 装进 PATH 的命令名,**跟随本构建 identity**:由可执行文件名小写化而来
+ * (官方 global/cn → `cindy`,dev → `cindydev`;个人构建 → `cindypersonal`)。
  * *nix 命令惯例用小写,与 forge 给 linux 包名用 `CINDY_EXE.toLowerCase()` 同一处理;
- * 未注入区域默认 global(见 brandRegion / region-and-editions.md §2.2)。
+ * 未注入 identity 默认官方(见 brandRegion / region-and-editions.md §2.2)。
  */
-export const CLI_COMMAND_NAME = brandExecutableName(CURRENT_CINDY_REGION).toLowerCase();
+export const CLI_COMMAND_NAME = CURRENT_EXECUTABLE_NAME.toLowerCase();
 
 /** PATH 里的 symlink 位置(命令名随 edition 品牌)。与 VS Code 的 `code` 同目录。 */
 export const CLI_LINK_PATH = `/usr/local/bin/${CLI_COMMAND_NAME}`;

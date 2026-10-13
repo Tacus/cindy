@@ -8,9 +8,14 @@ import path from 'node:path';
 const electronMock = vi.hoisted(() => ({ userData: '', region: 'global' as 'global' | 'cn' }));
 const dbMock = vi.hoisted(() => ({ current: null as Database.Database | null }));
 
-vi.mock('../../shared/brandRegion.js', () => ({
-  get CURRENT_CINDY_REGION() { return electronMock.region; },
-}));
+vi.mock('../../shared/brandRegion.js', async () => {
+  // 该模块按构建身份派生 userData / 进程匹配集;单测固定官方身份。
+  const { BRAND_IDENTITY } = await import('@cindy/maker-shared/brand-identity');
+  return {
+    get CURRENT_CINDY_REGION() { return electronMock.region; },
+    get CURRENT_BRAND_IDENTITY() { return BRAND_IDENTITY; },
+  };
+});
 
 vi.mock('electron', () => ({
   app: {

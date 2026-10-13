@@ -20,7 +20,7 @@ import { promisify } from 'node:util';
 
 import { allUserDataDirNames } from '@cindy/maker-shared/brand-identity';
 
-import { CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
+import { CURRENT_BRAND_IDENTITY, CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
 import { classifyAgentCommandLine } from '../agent-process-priority.js';
 import { WINDOWS_PROCESS_SCAN_SCRIPT } from './windowsProcessScanProtocol.js';
 import { runWindowsProcessScanWorker } from './windowsProcessScanWorkerClient.js';
@@ -73,7 +73,9 @@ export function buildPiPathMarkers(dirNames: readonly string[]): string[] {
   ];
 }
 
-const PI_MARKERS = buildPiPathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION));
+const PI_MARKERS = buildPiPathMarkers(
+  allUserDataDirNames(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY),
+);
 
 /**
  * 运行时 userData 派生的 pi marker(XDG_CONFIG_HOME / --user-data-dir 重定向

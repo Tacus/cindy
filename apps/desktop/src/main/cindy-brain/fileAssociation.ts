@@ -3,9 +3,8 @@ import { promisify } from 'node:util';
 
 import { app } from 'electron';
 
-import { brandExecutableName } from '@cindy/maker-shared/brand-identity';
 import { CINDY_MIME_TYPE, SHARE_MIME_TYPE } from '../../shared/fileTypes.js';
-import { CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
+import { CURRENT_EXECUTABLE_NAME } from '../../shared/brandRegion.js';
 import { createLogger } from '../logger.js';
 
 /**
@@ -39,7 +38,7 @@ const REG_TIMEOUT_MS = 5_000;
  * handler 归后启动的那个 app(它把 KEY_EXT 默认值改写成自己的 ProgId),
  * 可接受——各 app 双击 .cindy 的行为语义一致。
  */
-const PROG_ID = `${brandExecutableName(CURRENT_CINDY_REGION)}.CindyGhost`;
+const PROG_ID = `${CURRENT_EXECUTABLE_NAME}.CindyGhost`;
 const KEY_EXT = 'HKCU\\Software\\Classes\\.cindy';
 const KEY_PROG = `HKCU\\Software\\Classes\\${PROG_ID}`;
 const KEY_EXT_SHARE = 'HKCU\\Software\\Classes\\.cshare';

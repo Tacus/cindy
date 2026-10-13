@@ -63,13 +63,43 @@ git merge --no-ff --signoff upstream/main
 
 ### 个人安装包
 
-**当前实现边界（2026-10-13）**：Cindy Make 已关闭，不能手工造个人 runtime metadata
-绕过停用。普通 Global 源码包仍共用官方 appId、默认 profile 与深链协议；更换安装目录
-或只传 Chromium `--user-data-dir` 都不构成完整身份隔离。`0.0.0` 版本无关包不执行
-官方应用更新，但也不因此变成独立个人版。没有受支持的独立身份时，先交付构建产物，
-不要启动或安装成与正式版并行的个人版；新增独立身份需明确安装与登录回调的边界。
-事实源为 `packages/maker-shared/src/cindyMakeFeature.ts`、Desktop 的 `forge.config.ts`、
-`src/main/regionUserData.ts`、`src/main/deepLink.ts` 和 `src/main/updateService.ts`。
+**个人构建身份（fork-local，2026-10-13 落地）**：源码包默认仍是官方身份；打包时设置
+`CINDY_BUILD_IDENTITY=personal` 启用个人身份叠加层
+（`PERSONAL_BRAND_IDENTITY`，`packages/maker-shared/src/brandIdentity.ts`），
+运行期经 `shared/brandRegion.ts` 烘焙，与官方安装**同机并存互不干扰**：
+
+| 项 | 官方（cn / global） | 个人构建 |
+| --- | --- | --- |
+| exe / 快捷方式 / 安装目录名 | `Cindy` | `CindyPersonal`（dev 后缀 `Dev`） |
+| Windows AUMID / macOS bundle id | `com.xd.cindycn` / `com.xd.cindy` | `com.xd.cindycn.personal` / `com.xd.cindy.personal` |
+| userData | `Cindy` / `CindyGlobal` | `CindyPersonalCN` / `CindyPersonal` |
+| 深链 scheme | `cindy` + `xdt-maker` | 只有 `cindy-personal` |
+
+- NSIS 安装器按 `${PRODUCT_FILENAME}` 只检查 / 结束自己的 `CindyPersonal.exe`，只重建
+  自己的快捷方式、右键菜单键与登录项；不会覆盖官方安装，也不会强杀官方 `Cindy.exe`。
+  安装是 per-user（`%LOCALAPPDATA%\Programs\CindyPersonal`），无需管理员权限。
+- 登录沿用端点清单的 loopback / 托管回调（与深链 scheme 无关），区域由
+  `CINDY_AUTH_REGION` 决定：个人 cn 构建登录 cn 域。
+- 构建命令（版本无关包，0.0.0，不参与官方热更新；本机无 Win 签名通道时加 `--no-sign`）：
+
+  ```bash
+  CINDY_BUILD_IDENTITY=personal pnpm release:package -- --region cn --no-sign
+  ```
+
+  产物收集在 `apps/desktop/out/make/nsis/x64/`（`Cindy Setup 0.0.0.exe`）。
+- 个人构建使用**全新 profile**：不导入官方数据库、登录态与 legacy 数据；device-link
+  与手机端会把它当成新设备。需要沿用官方数据时单独设计迁移，不复制凭证。
+- 已知边界：产物未签名（SmartScreen 提示，需用户手动放行）；不接收官方热更新，
+  升级靠在集成分支合并 upstream 后重新打包安装；`.cindy` 扩展名的默认打开方式会归
+  最后一次安装的构建（两侧语义相同，可接受）；macOS 的 safeStorage 钥匙串条目按
+  `app.name` 分离（已 `app.setName`，未在 macOS 实机验证）。
+- 卸载走自己「CindyPersonal」卸载项；卸载不碰官方安装与 `CindyPersonalCN` profile
+  （要清个人数据时单独删除该目录）。
+
+事实源为 `packages/maker-shared/src/brandIdentity.ts`、Desktop 的 `forge.config.ts`、
+`src/shared/brandRegion.ts`、`src/main/regionUserData.ts`、`src/main/deepLink.ts` 和
+`src/main/updateService.ts`；Cindy Make 仍关闭（`cindyMakeFeature.ts`），个人构建
+不经过它。
 
 - 构建前记录来源 commit、官方同步基准、构建区域、版本和验证结果；产物与这个源码
   快照对应。完成后检查实际产物，不能把成功编译前端当成已经生成并安装客户端。
@@ -91,6 +121,7 @@ git merge --no-ff --signoff upstream/main
 
 ## 5. 每次同步 / 构建的交付记录
 
-至少记录：个人 commit 与 DCO、官方基准、测试 / 类型检查 / review 的真实结果、产物路径
-与校验值、实际安装方式与数据隔离范围。区分「源码已合并」「构建成功」「已安装」「已启动」
-与「真实使用已验证」；任何阶段未完成都明确标记，并给出下一步。
+至少记录：个人 commit 与 DCO、官方基准、构建身份（official / personal）与区域、测试 /
+类型检查 / review 的真实结果、产物路径与校验值、实际安装方式与数据隔离范围。区分
+「源码已合并」「构建成功」「已安装」「已启动」与「真实使用已验证」；任何阶段未完成都
+明确标记，并给出下一步。

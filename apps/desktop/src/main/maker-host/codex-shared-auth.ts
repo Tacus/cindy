@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { brandUserDataDirName } from '@cindy/maker-shared/brand-identity';
-import { CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
+import { CURRENT_BRAND_IDENTITY, CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
 import { shouldSuppressLocalCodexAuth } from './codex-auth-invalidation.js';
 
 /** 本机 Codex CLI 默认维护的 OpenAI 登录态。 */
@@ -16,7 +16,7 @@ export function getCodexCliAuthPath(): string {
 export function getReleaseCodexAuthPath(): string {
   return path.join(
     app.getPath('appData'),
-    brandUserDataDirName(CURRENT_CINDY_REGION),
+    brandUserDataDirName(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY),
     'codex-home',
     'auth.json',
   );

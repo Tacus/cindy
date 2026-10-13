@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { BRAND_IDENTITY } from '@cindy/maker-shared/brand-identity';
 import { DEEP_LINK_SCHEMES } from '../shared/deepLinkSchemes';
+import { CURRENT_BRAND_IDENTITY } from '../shared/brandRegion';
 import { createLogger } from './logger';
 
 const execFileAsync = promisify(execFile);
@@ -18,8 +18,8 @@ export async function registerWindowsDeepLinkName(scheme: string, platform = pro
       const result = await execFileAsync('reg.exe', ['query', key, '/v', 'ApplicationName'], options);
       existing = /ApplicationName\s+REG_SZ\s+([^\r\n]*)/.exec(result.stdout)?.[1]?.trim() ?? '';
     } catch { /* First registration has no Application metadata yet. */ }
-    if (existing === BRAND_IDENTITY.displayName) return;
-    await execFileAsync('reg.exe', ['add', key, '/v', 'ApplicationName', '/t', 'REG_SZ', '/d', BRAND_IDENTITY.displayName, '/f'], options);
+    if (existing === CURRENT_BRAND_IDENTITY.displayName) return;
+    await execFileAsync('reg.exe', ['add', key, '/v', 'ApplicationName', '/t', 'REG_SZ', '/d', CURRENT_BRAND_IDENTITY.displayName, '/f'], options);
   } catch {
     // A missing display label must never block startup or change the existing launch command.
     log.warn('could not register protocol display name', { scheme });

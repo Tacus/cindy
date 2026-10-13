@@ -991,7 +991,7 @@ import {
 import { createMakeTestWindowBehavior } from './cindy-make/testWindowBehavior.js';
 import { registerFolderContextMenu } from './folderContextMenu.js';
 import { healWindowsShortcuts } from './windowsShortcutSelfHeal.js';
-import { CURRENT_APP_ID, CURRENT_CINDY_REGION } from '../shared/brandRegion.js';
+import { CURRENT_APP_ID, CURRENT_BRAND_IDENTITY, CURRENT_CINDY_REGION, CURRENT_EXECUTABLE_NAME } from '../shared/brandRegion.js';
 import {
   readWindowBehaviorSettings,
   writeLinuxCloseBehavior,
@@ -9050,7 +9050,7 @@ app.on('ready', async () => {
             ? () =>
                 acquireWindowsPackagedInstanceBarrier({
                   userDataDir: app.getPath('userData'),
-                  programName: BRAND_IDENTITY.executableName,
+                  programName: CURRENT_EXECUTABLE_NAME,
                 })
             : undefined,
         ),
@@ -9197,7 +9197,10 @@ app.on('ready', async () => {
         await sweepLegacyDialogueWorkingDirs({
           db: getDbClient(),
           userDataDir: app.getPath('userData'),
-          legacyUserDataDirNames: legacyDialogueUserDataDirNames(CURRENT_CINDY_REGION),
+          legacyUserDataDirNames: legacyDialogueUserDataDirNames(
+            CURRENT_CINDY_REGION,
+            CURRENT_BRAND_IDENTITY,
+          ),
           currentDialoguesRoot: ownerScopedUserDataPath('dialogues'),
           additionalLegacyDialogueRoots: [path.join(app.getPath('userData'), 'dialogues')],
           log: createLogger('dialogue-workdir-self-heal'),

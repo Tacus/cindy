@@ -24,7 +24,7 @@ import {
   allUserDataDirNames,
   brandUserDataDirName,
 } from '@cindy/maker-shared/brand-identity';
-import { CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
+import { CURRENT_BRAND_IDENTITY, CURRENT_CINDY_REGION } from '../../shared/brandRegion.js';
 
 import {
   CodexResumePreparationBlockedError,
@@ -1417,7 +1417,7 @@ function acceptStateBackedWinnerAfterRecovery(
 /** 当前区域的全部历史品牌 Codex HOME;不包含当前区域正在使用的 HOME。 */
 function legacyBrandedCodexHomes(targetHome: string): string[] {
   const userDataParent = path.dirname(path.dirname(targetHome));
-  return allUserDataDirNames(CURRENT_CINDY_REGION)
+  return allUserDataDirNames(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY)
     .slice(1)
     .map((dirName) => path.join(userDataParent, dirName, 'codex-home'));
 }
@@ -3828,7 +3828,7 @@ function getDesktopCodexHome(): string {
   }
 
   // 兜底路径按现有区域目录映射取值(global=CindyGlobal,cn=Cindy，同机双装分库)。
-  const dirName = brandUserDataDirName(CURRENT_CINDY_REGION);
+  const dirName = brandUserDataDirName(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY);
   if (process.platform === 'darwin') {
     return path.join(os.homedir(), 'Library', 'Application Support', dirName, 'codex-home');
   }

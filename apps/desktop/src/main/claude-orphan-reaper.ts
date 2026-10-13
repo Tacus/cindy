@@ -28,7 +28,7 @@
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { allUserDataDirNames } from '@cindy/maker-shared/brand-identity';
-import { CURRENT_CINDY_REGION } from '../shared/brandRegion.js';
+import { CURRENT_BRAND_IDENTITY, CURRENT_CINDY_REGION } from '../shared/brandRegion.js';
 import { createLogger } from './logger';
 
 const log = createLogger('claude-orphan-reaper');
@@ -57,9 +57,9 @@ export function buildClaudePathMarkers(dirNames: readonly string[]): string[] {
 }
 
 const XDT_CLAUDE_PATH_MARKERS = [
-  // 只认领本区域(+ 历史)userData 下的进程:同机双装时另一区域实例的
-  // Claude 子进程属于对方,跨区域匹配会把人家活着的 agent 树误杀。
-  ...buildClaudePathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION)),
+  // 只认领本构建身份(+ 本区域历史)userData 下的进程:同机双装时官方实例与
+  // 个人构建实例的子进程分属彼此,跨身份匹配会把对方活着的 agent 树误杀。
+  ...buildClaudePathMarkers(allUserDataDirNames(CURRENT_CINDY_REGION, CURRENT_BRAND_IDENTITY)),
   // Dev checkouts (and their current/legacy managed worktrees) launch the pinned binary from
   // <repo>/apps/claude-code-bin/<platform-arch>/ — without these markers a
   // dev-spawned orphan is misclassified as an external install and spared,

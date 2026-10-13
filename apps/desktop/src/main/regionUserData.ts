@@ -23,6 +23,7 @@
 import {
   BRAND_IDENTITY,
   brandUserDataDirName,
+  type BrandIdentity,
   type CindyRegion,
 } from '@cindy/maker-shared/brand-identity';
 
@@ -31,19 +32,24 @@ function hasExplicitUserDataDir(argv: readonly string[]): boolean {
   return argv.some((a) => a === '--user-data-dir' || a.startsWith('--user-data-dir='));
 }
 
-/**
- * 解析本构建是否需要覆写 userData 目录。
+/** 解析本构建是否需要覆写 userData 目录。
  * 返回目录名(调用方拼到 appData 下)或 null(保持 Electron 默认)。
+ * 个人构建(cn/global)必须显式覆写,不能与官方 profile 共目录。
  */
 export function resolveRegionUserDataDirName(input: {
   isPackaged: boolean;
   region: CindyRegion;
   argv: readonly string[];
   envUserDataDir?: string;
+  /** 构建身份档案;缺省官方身份(既有行为零变化)。个人构建用其区域目录名。 */
+  identity?: BrandIdentity;
 }): string | null {
   if (hasExplicitUserDataDir(input.argv)) return null;
-  const dirName = brandUserDataDirName(input.region);
-  // 与 productName 默认派生目录同名(cn)→ 不覆写,走 Electron 原生路径。
+  const identity = input.identity ?? BRAND_IDENTITY;
+  const dirName = brandUserDataDirName(input.region, identity);
+  // 与 productName 默认派生目录同名(cn 官方身份)→ 不覆写,走 Electron 原生路径。
+  // 比较基准是 Electron 的实际默认目录名(productName='Cindy'),不是身份的
+  // userDataDirName —— 个人 global 身份的自定义目录恰好叫 CindyPersonal,必须显式覆写。
   if (dirName === BRAND_IDENTITY.userDataDirName) return null;
   return dirName;
 }
