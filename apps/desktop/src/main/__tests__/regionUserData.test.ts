@@ -64,15 +64,15 @@ describe('resolveRegionUserDataDirName', () => {
 });
 
 /**
- * 个人构建身份(fork-local)必须显式覆写 userData 目录:官方 cn 走 productName
- * 默认的 Cindy,个人 cn 的 CindyPersonalCN 虽同名规则不同,也必须返回覆写值;
- * 个人 global 的自定义目录 CindyPersonal 恰好不等于 productName 默认 Cindy,
- * 同样显式返回 —— 只有官方 cn 才允许 null(走原生路径)。
+ * 个人构建身份(fork-local)与官方安装**共享同一份数据目录**(2026-10-13 owner
+ * 裁决):cn 落回官方 productName 默认目录(返回 null),global / dev 显式覆写为官方
+ * 同名目录 —— 个人构建因此直接读到官方的登录态 / 项目 / 任务;单实例锁与官方互斥,
+ * 约定不同时运行。要跑隔离实验用显式 --user-data-dir,那条路径仍优先。
  */
-describe('个人构建身份的 userData 目录', () => {
+describe('个人构建身份的 userData 目录(共享官方 profile)', () => {
   const ARGV = ['CindyPersonal.exe'] as const;
 
-  it('packaged 下 cn / global / dev 都显式覆写为个人目录', () => {
+  it('packaged 下三个区域都落在官方同名目录', () => {
     expect(
       resolveRegionUserDataDirName({
         isPackaged: true,
@@ -80,7 +80,7 @@ describe('个人构建身份的 userData 目录', () => {
         argv: ARGV,
         identity: PERSONAL_BRAND_IDENTITY,
       }),
-    ).toBe('CindyPersonalCN');
+    ).toBeNull();
     expect(
       resolveRegionUserDataDirName({
         isPackaged: true,
@@ -88,7 +88,7 @@ describe('个人构建身份的 userData 目录', () => {
         argv: ARGV,
         identity: PERSONAL_BRAND_IDENTITY,
       }),
-    ).toBe('CindyPersonal');
+    ).toBe('CindyGlobal');
     expect(
       resolveRegionUserDataDirName({
         isPackaged: true,
@@ -96,7 +96,7 @@ describe('个人构建身份的 userData 目录', () => {
         argv: ARGV,
         identity: PERSONAL_BRAND_IDENTITY,
       }),
-    ).toBe('CindyPersonalDev');
+    ).toBe('CindyDev');
   });
 
   it('显式 --user-data-dir 仍优先,个人身份也不例外', () => {

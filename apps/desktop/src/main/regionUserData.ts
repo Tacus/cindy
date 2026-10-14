@@ -34,7 +34,8 @@ function hasExplicitUserDataDir(argv: readonly string[]): boolean {
 
 /** 解析本构建是否需要覆写 userData 目录。
  * 返回目录名(调用方拼到 appData 下)或 null(保持 Electron 默认)。
- * 个人构建(cn/global)必须显式覆写,不能与官方 profile 共目录。
+ * 个人构建身份按区域与官方同值(共享 profile,见 PERSONAL_BRAND_IDENTITY),
+ * 官方 cn 因此仍是 null;两者都读同一份数据,不另建 profile。
  */
 export function resolveRegionUserDataDirName(input: {
   isPackaged: boolean;
@@ -47,9 +48,9 @@ export function resolveRegionUserDataDirName(input: {
   if (hasExplicitUserDataDir(input.argv)) return null;
   const identity = input.identity ?? BRAND_IDENTITY;
   const dirName = brandUserDataDirName(input.region, identity);
-  // 与 productName 默认派生目录同名(cn 官方身份)→ 不覆写,走 Electron 原生路径。
-  // 比较基准是 Electron 的实际默认目录名(productName='Cindy'),不是身份的
-  // userDataDirName —— 个人 global 身份的自定义目录恰好叫 CindyPersonal,必须显式覆写。
+  // 与 productName 默认派生目录同名(cn)→ 不覆写,走 Electron 原生路径。
+  // 比较基准是 Electron 的实际默认目录名(productName='Cindy'):官方 cn 与个人
+  // cn(共享 profile,同样是 'Cindy')都落在这里,global / dev 显式覆写。
   if (dirName === BRAND_IDENTITY.userDataDirName) return null;
   return dirName;
 }

@@ -285,14 +285,23 @@ export function resolveCindyBuildIdentity(raw?: string | null): CindyBuildIdenti
 }
 
 /**
- * 个人构建身份档案。所有派生标识符带 `personal` 限定:
+ * 个人构建身份档案。标识符层全部带 `personal` 限定，**数据目录与官方身份共用**
+ * （2026-10-13 owner 裁决：个人构建要直接读官方安装的项目目录 / 任务 / session /
+ * 登录态，不再各持一份 profile）：
  *   - exe / 快捷方式 / 安装目录:cn/global `CindyPersonal`,dev `CindyPersonalDev`;
  *   - appId(Windows AUMID / macOS bundle id)按区域再限定,绝不等于官方值;
- *   - userData:cn `CindyPersonalCN`(官方 cn 用 productName 默认目录,
- *     这里必须显式覆写)、global `CindyPersonal`、dev `CindyPersonalDev`;
+ *   - userData:与官方同区域同目录(cn `Cindy`、global `CindyGlobal`、dev `CindyDev`)
+ *     —— 依赖 `resolveRegionUserDataDirName` 返回官方目录名 / null，单实例锁因此
+ *     与官方安装互斥（约定不同时运行）；要跑隔离实验用显式 `--user-data-dir`，
+ *     那条路径尊重调用方、不受本档案影响；
  *   - 深链只注册 `cindy-personal://`:官方 `cindy://` / `xdt-maker://` 不碰。
- * dbFilePrefix / updaterName / cdnPrefix 与官方同值 —— 它们只在自家
- * userData 目录 / 版本无关包内生效,不构成跨安装冲突。
+ * ⚠️ 共用 profile 意味着 schema 必须与官方安装兼容：今天两边都是 125；任一边先
+ * 迁库，另一边会 fail-closed 拒绝启动，需要重建 / 更新后再用（见
+ * docs/dev-rules/personal-fork-development.md）。Windows 上 safeStorage 走
+ * DPAPI（用户级）所以共用登录态可行；macOS 钥匙串按 app.name 分条目，共用
+ * profile 的凭据对个人构建不可解 —— 目前只承诺 Windows。
+ * dbFilePrefix / updaterName / cdnPrefix 与官方同值 —— dbFilePrefix 必须同值
+ * 才能找到官方库文件。
  */
 export const PERSONAL_BRAND_IDENTITY: BrandIdentity = Object.freeze({
   ...BRAND_IDENTITY,
@@ -310,12 +319,9 @@ export const PERSONAL_BRAND_IDENTITY: BrandIdentity = Object.freeze({
   }),
   primaryScheme: 'cindy-personal',
   legacySchemes: Object.freeze([]),
-  userDataDirName: 'CindyPersonal',
-  userDataDirNameByRegion: Object.freeze({
-    cn: 'CindyPersonalCN',
-    global: 'CindyPersonal',
-    dev: 'CindyPersonalDev',
-  }),
+  // 数据目录与官方身份逐区域同值:个人构建直接读官方安装的项目 / 任务 / 登录。
+  userDataDirName: BRAND_IDENTITY.userDataDirName,
+  userDataDirNameByRegion: BRAND_IDENTITY.userDataDirNameByRegion,
   legacyUserDataDirNames: Object.freeze([]),
   legacyUserDataDirNamesByRegion: Object.freeze({
     cn: Object.freeze([]),

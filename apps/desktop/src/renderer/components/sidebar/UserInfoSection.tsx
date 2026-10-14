@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/lib/toast';
 import type { DesktopSavedAccount } from '@/lib/authService';
-import { CURRENT_CINDY_REGION } from '../../../shared/brandRegion';
+import { CURRENT_CINDY_REGION, IS_OFFICIAL_BUILD_IDENTITY } from '../../../shared/brandRegion';
 import { shouldLabelRegion } from '../../../shared/regionCode';
 import { MobileDownloadDialog } from './MobileDownloadDialog';
 
@@ -139,12 +139,22 @@ export function UserInfoSection({ isCollapsed, onOpenUpdateNotice }: UserInfoSec
     : CURRENT_CINDY_REGION === 'cn'
       ? t('sidebar.user.regionCodeCn')
       : t('sidebar.user.regionCodeDev');
-  const appVersionLabel = appRegionLabel
-    ? `${appRegionLabel} · ${appDisplayVersion}`
-    : appDisplayVersion;
-  const appVersionLabelDetail = appRegionLabel
-    ? `${appRegionLabel} · ${appDisplayVersionDetail}`
-    : appDisplayVersionDetail;
+  // 个人构建身份标识(构建期烘焙):与官方安装同机并存时,版本行带 `Personal`
+  // 一眼区分;官方构建为空,版本行保持原样。代号不翻译(同区域代号做法)。
+  const appIdentityLabel = IS_OFFICIAL_BUILD_IDENTITY
+    ? null
+    : t('sidebar.user.identityPersonal');
+  const appSegmentLabels = [appRegionLabel, appIdentityLabel].filter(
+    (segment): segment is string => !!segment,
+  );
+  const appVersionLabel =
+    appSegmentLabels.length > 0
+      ? `${appSegmentLabels.join(' · ')} · ${appDisplayVersion}`
+      : appDisplayVersion;
+  const appVersionLabelDetail =
+    appSegmentLabels.length > 0
+      ? `${appSegmentLabels.join(' · ')} · ${appDisplayVersionDetail}`
+      : appDisplayVersionDetail;
   const visibleVersionLabel = appVersionLabel;
   const visibleVersionLabelDetail = appVersionLabelDetail;
   const remoteAvailable = mode === 'cloud';

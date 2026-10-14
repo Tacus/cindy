@@ -72,8 +72,22 @@ git merge --no-ff --signoff upstream/main
 | --- | --- | --- |
 | exe / 快捷方式 / 安装目录名 | `Cindy` | `CindyPersonal`（dev 后缀 `Dev`） |
 | Windows AUMID / macOS bundle id | `com.xd.cindycn` / `com.xd.cindy` | `com.xd.cindycn.personal` / `com.xd.cindy.personal` |
-| userData | `Cindy` / `CindyGlobal` | `CindyPersonalCN` / `CindyPersonal` |
+| 窗口标题 / 侧栏版本行 | `Cindy` | `Cindy Personal` / `… · Personal · <version>` |
+| userData / 数据库 | `Cindy` / `CindyGlobal` | **与官方同区域同目录（共享）** |
 | 深链 scheme | `cindy` + `xdt-maker` | 只有 `cindy-personal` |
+
+- **数据共享（2026-10-13 owner 裁决）**：个人构建直接使用官方区域 profile
+  （cn `%APPDATA%\Cindy`），登录态、项目、任务、session 与官方安装是同一份；
+  单实例锁因此与官方安装互斥（同一时间只能跑一个，由 Electron 单实例锁硬保证，
+  第二个进程会退出并聚焦已运行窗口）。要跑隔离实验用显式
+  `--user-data-dir=<目录>`（`resolveRegionUserDataDirName` 尊重该开关，不经身份档案）。
+- **schema 耦合**：共用 profile 要求两边数据库版本兼容（今天都是 125）。任一边先
+  迁库（如官方应用内更新，或个人构建合并了带新 migration 的 upstream），另一边会
+  fail-closed 拒绝启动而不是损坏数据。此时必须重建个人构建 / 更新官方版后再用；
+  排查时看应用日志里的 schema 校验失败，不要删库。
+- **登录凭据**：Windows 上 safeStorage 走 DPAPI（用户级），共享 profile 的加密凭据
+  两边都能解；macOS 钥匙串按 `app.name` 分条目，共享 profile 的凭据对个人构建
+  不可解 —— **共享模式只承诺 Windows**，macOS 个人构建要用独立 profile 需另行设计。
 
 - NSIS 安装器按 `${PRODUCT_FILENAME}` 只检查 / 结束自己的 `CindyPersonal.exe`，只重建
   自己的快捷方式、右键菜单键与登录项；不会覆盖官方安装，也不会强杀官方 `Cindy.exe`。
@@ -87,19 +101,20 @@ git merge --no-ff --signoff upstream/main
   ```
 
   产物收集在 `apps/desktop/out/make/nsis/x64/`（`Cindy Setup 0.0.0.exe`）。
-- 个人构建使用**全新 profile**：不导入官方数据库、登录态与 legacy 数据；device-link
-  与手机端会把它当成新设备。需要沿用官方数据时单独设计迁移，不复制凭证。
+- 个人构建使用官方 profile：不导入、不复制数据，也没有自己的登录态 —— 首次启动
+  直接就是官方安装的账号与任务；数据写入同一份库（同一时间只跑一个实例）。
 - 已知边界：产物未签名（SmartScreen 提示，需用户手动放行）；不接收官方热更新，
   升级靠在集成分支合并 upstream 后重新打包安装；`.cindy` 扩展名的默认打开方式会归
-  最后一次安装的构建（两侧语义相同，可接受）；macOS 的 safeStorage 钥匙串条目按
-  `app.name` 分离（已 `app.setName`，未在 macOS 实机验证）。
-- 卸载走自己「CindyPersonal」卸载项；卸载不碰官方安装与 `CindyPersonalCN` profile
-  （要清个人数据时单独删除该目录）。
+  最后一次安装的构建（两侧语义相同，可接受）；共享 profile 的 schema 耦合见上；
+  macOS 只做了 `app.setName` 层分离，未实机验证。
+- 卸载走自己「CindyPersonal」卸载项；卸载不碰官方安装与共享的官方 profile
+  （个人构建不单独持有数据目录）。
 
 事实源为 `packages/maker-shared/src/brandIdentity.ts`、Desktop 的 `forge.config.ts`、
-`src/shared/brandRegion.ts`、`src/main/regionUserData.ts`、`src/main/deepLink.ts` 和
-`src/main/updateService.ts`；Cindy Make 仍关闭（`cindyMakeFeature.ts`），个人构建
-不经过它。
+`src/shared/brandRegion.ts`（窗口标题 / 侧栏 `Personal` 标识）、`src/main/regionUserData.ts`、
+`src/main/deepLink.ts` 和 `src/main/updateService.ts`；Cindy Make 仍关闭
+（`cindyMakeFeature.ts`），个人构建不经过它；隔离数据而非共享数据的测试入口是
+显式 `--user-data-dir`。
 
 - 构建前记录来源 commit、官方同步基准、构建区域、版本和验证结果；产物与这个源码
   快照对应。完成后检查实际产物，不能把成功编译前端当成已经生成并安装客户端。

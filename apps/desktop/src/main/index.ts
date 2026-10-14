@@ -32,10 +32,11 @@ configureLinuxPasswordStore({
 });
 
 // 正式目录保持历史兼容：global 构建继续使用 CindyGlobal，cn 版继续使用
-// productName 默认的 Cindy；dev 也按构建区域选择对应 profile。个人构建身份
-// (fork-local) 使用自己的区域目录，绝不与官方 profile 共库。必须在
+// productName 默认的 Cindy；dev 也按构建区域选择对应 profile。必须在
 // initLogger()(packaged 日志目录)、crashReporter、单实例锁与一切 userData
 // 读取之前完成区域 / 身份映射。
+// 个人构建身份(fork-local)与官方安装**共用同一份区域目录**(共享登录态 / 项目 /
+// 任务)；单实例锁因此与官方互斥(约定不同时运行)，隔离实验走显式 `--user-data-dir`。
 const regionUserDataDirName = resolveRegionUserDataDirName({
   isPackaged: app.isPackaged,
   region: CURRENT_CINDY_REGION,

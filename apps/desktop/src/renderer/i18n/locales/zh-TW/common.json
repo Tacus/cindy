@@ -8497,6 +8497,7 @@
       "canaryBadge": "灰度使用者",
       "regionCodeCn": "CN",
       "regionCodeDev": "Dev",
+      "identityPersonal": "Personal",
       "viewReleaseNotes": "檢視版本日誌",
       "reopenUpdateBanner": "有更新待重啟，點選檢視",
       "downloadMobile": "下載 Cindy 移動端"

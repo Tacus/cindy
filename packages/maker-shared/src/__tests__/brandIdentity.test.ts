@@ -219,7 +219,7 @@ describe('个人构建身份', () => {
     expect(brandIdentityFor('personal')).toBe(PERSONAL_BRAND_IDENTITY);
   });
 
-  it('逐区域与官方身份无交集(exe / appId / userData),cn 显式覆写不落 productName 默认目录', () => {
+  it('标识符与官方无交集(exe / appId),数据目录与官方逐区域同值(共享 profile)', () => {
     for (const region of ['cn', 'global', 'dev'] as const) {
       expect(PERSONAL_BRAND_IDENTITY.executableNameByRegion[region]).not.toBe(
         BRAND_IDENTITY.executableNameByRegion[region],
@@ -227,25 +227,29 @@ describe('个人构建身份', () => {
       expect(PERSONAL_BRAND_IDENTITY.appIdByRegion[region]).not.toBe(
         BRAND_IDENTITY.appIdByRegion[region],
       );
-      expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion[region]).not.toBe(
+      // 2026-10-13 owner 裁决:个人构建直接读官方数据(项目 / 任务 / 登录),
+      // 数据目录故意与官方同值;隔离实验走显式 --user-data-dir(不经本档案)。
+      expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion[region]).toBe(
         BRAND_IDENTITY.userDataDirNameByRegion[region],
       );
     }
-    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.cn).toBe('CindyPersonalCN');
-    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.global).toBe('CindyPersonal');
-    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.dev).toBe('CindyPersonalDev');
+    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.cn).toBe('Cindy');
+    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.global).toBe('CindyGlobal');
+    expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion.dev).toBe('CindyDev');
+    expect(PERSONAL_BRAND_IDENTITY.userDataDirName).toBe(BRAND_IDENTITY.userDataDirName);
     expect(PERSONAL_BRAND_IDENTITY.executableName).toBe('CindyPersonal');
   });
 
-  it('深链不含官方 scheme,userData / legacy 匹配集只认自己', () => {
+  it('深链不含官方 scheme,legacy 迁移集为空(不导入官方 / 老数据)', () => {
     expect(PERSONAL_BRAND_IDENTITY.primaryScheme).toBe('cindy-personal');
     expect(allDeepLinkSchemes(PERSONAL_BRAND_IDENTITY)).toEqual(['cindy-personal']);
     for (const scheme of allDeepLinkSchemes(PERSONAL_BRAND_IDENTITY)) {
       expect(allDeepLinkSchemes()).not.toContain(scheme);
     }
-    expect(allUserDataDirNames('cn', PERSONAL_BRAND_IDENTITY)).toEqual(['CindyPersonalCN']);
-    expect(allUserDataDirNames('global', PERSONAL_BRAND_IDENTITY)).toEqual(['CindyPersonal']);
-    expect(allUserDataDirNames('dev', PERSONAL_BRAND_IDENTITY)).toEqual(['CindyPersonalDev']);
+    // 共享 profile 后进程匹配集仍按官方目录名(= 本构建实际使用的目录)。
+    expect(allUserDataDirNames('cn', PERSONAL_BRAND_IDENTITY)).toEqual(['Cindy']);
+    expect(allUserDataDirNames('global', PERSONAL_BRAND_IDENTITY)).toEqual(['CindyGlobal']);
+    expect(allUserDataDirNames('dev', PERSONAL_BRAND_IDENTITY)).toEqual(['CindyDev']);
     expect(legacyBrandUserDataDirNames(PERSONAL_BRAND_IDENTITY)).toEqual([]);
     expect(legacyDialogueUserDataDirNames('cn', PERSONAL_BRAND_IDENTITY)).toEqual([]);
     expect(PERSONAL_BRAND_IDENTITY.legacyDbFilePrefixes).toEqual([]);
@@ -259,7 +263,7 @@ describe('个人构建身份', () => {
       expect(PERSONAL_BRAND_IDENTITY.executableNameByRegion[region]).toMatch(dirSafe);
       expect(PERSONAL_BRAND_IDENTITY.userDataDirNameByRegion[region]).toMatch(dirSafe);
     }
-    // 前缀只在自家 userData / 版本无关包内生效,与官方同值不构成跨安装冲突。
+    // 前缀与官方同值:dbFilePrefix 同值才能找到共享 profile 里的官方库文件。
     expect(PERSONAL_BRAND_IDENTITY.dbFilePrefix).toBe(BRAND_IDENTITY.dbFilePrefix);
     expect(PERSONAL_BRAND_IDENTITY.updaterName).toBe(BRAND_IDENTITY.updaterName);
   });

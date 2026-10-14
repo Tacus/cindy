@@ -6,11 +6,19 @@
  * 否则 ESM 会先执行语音、诊断和设置初始化。
  */
 
+import { CURRENT_BRAND_IDENTITY, IS_OFFICIAL_BUILD_IDENTITY } from '../shared/brandRegion';
+
 const urlParams = new URLSearchParams(window.location.search);
 const isRemoteDesktopViewer = urlParams.get('remoteDesktopViewer') === '1';
 const isResourceUsageWindow = urlParams.get('resourceUsageWindow') === '1';
 const isSidebarWindow = urlParams.get('sidebarWindow') === '1';
 const ghostPanelWindowId = urlParams.get('ghostPanelWindow');
+
+// 个人构建身份(fork-local)的可见标识:窗口标题 / 任务栏悬停带上 `Cindy Personal`,
+// 与同机并存的官方安装一眼区分;官方构建不进入这个分支。
+if (!IS_OFFICIAL_BUILD_IDENTITY) {
+  document.title = CURRENT_BRAND_IDENTITY.displayName;
+}
 
 void (isRemoteDesktopViewer
   ? import('./remote-desktop-viewer-entry')
