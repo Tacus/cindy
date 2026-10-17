@@ -159,6 +159,13 @@ function groupTopicMessage(text: string, threadId: string): unknown {
   return raw;
 }
 
+function groupTopicMessageWithoutMention(text: string, threadId: string, messageId = 'om_topic_no_mention'): unknown {
+  const raw = groupTopicMessage(text, threadId) as { message: Record<string, unknown> };
+  raw.message.message_id = messageId;
+  raw.message.mentions = [];
+  return raw;
+}
+
 function groupTopicImageMessage(threadId: string, messageId: string): unknown {
   const raw = groupTopicMessage('unused', threadId) as { message: Record<string, unknown> };
   raw.message.message_id = messageId;
@@ -278,6 +285,21 @@ describe('feishu group thread routing', () => {
     expect(events[0].senderId).toBe('g/oc_chat1/omt_existing');
     // 话题内触发: 取数 lane 就是话题自己(不带 groupContextLane 覆写)。
     expect(events[0].groupContextLane).toBeUndefined();
+  });
+
+  it('话题内 owner 消息无需再次 @bot, 仍进入该话题 lane', async () => {
+    const events = collectMessages();
+    await connect();
+
+    await mocks.eventHandlers['im.message.receive_v1'](
+      groupTopicMessageWithoutMention('继续刚才的工作', 'omt_existing'),
+    );
+
+    expect(mocks.openThread).not.toHaveBeenCalled();
+    expect(mocks.pushReplyAnchor).toHaveBeenCalledWith('g/oc_chat1/omt_existing', 'om_topic_no_mention');
+    expect(events).toHaveLength(1);
+    expect(events[0].senderId).toBe('g/oc_chat1/omt_existing');
+    expect(events[0].text).toBe('继续刚才的工作');
   });
 
   it('勾选同时发送到群聊: 不同 message_id 的话题/群副本只派一个话题 turn', async () => {

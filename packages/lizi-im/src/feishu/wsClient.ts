@@ -1529,8 +1529,10 @@ async function processClaimedMessage(
   let commitTopic: (() => boolean) | undefined;
   let abandonTopic: (() => void) | undefined;
   if (isGroup) {
-    // 没 @ 到本 bot 的群消息一律丢(bot open_id 未知时也丢 — 惰性失效)。
-    if (!mentionsSelf(data.message?.mentions, botOpenId)) return;
+    // 群主流仍要求 @bot 才能触发；已经在话题里的 owner 消息自动续接该
+    // 话题，不要求每条消息重复 @bot。话题 lane 后续会按
+    // g/{chatId}/{threadId} 路由到同一个 Cindy session。
+    if (!mentionsSelf(data.message?.mentions, botOpenId) && !incomingThreadId) return;
     // 群里绝不 TOFU 认主(钉钉同款): 没有 owner 时群消息全丢。
     if (!ownerGuard.firstAllowed()) {
       log.info('[feishu/wsClient] drop group mention: no owner bound yet');
