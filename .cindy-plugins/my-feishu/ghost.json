@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 3,
+  "minCindyVersion": "0.1.0",
+  "id": "my-feishu",
+  "name": "My Feishu",
+  "description": "Connect personal Feishu accounts with OAuth and manage the active account.",
+  "whenToUse": "连接、查看和切换自己的飞书账号；需要查询当前飞书身份时使用。",
+  "version": "1.0.0",
+  "kind": "chip",
+  "entry": "main.js",
+  "icon": "assets/icon.png",
+  "command": "my-feishu",
+  "panel": { "title": "My Feishu", "html": "panel.html", "position": "tab" },
+  "settingsHtml": "settings.html",
+  "network": {
+    "hosts": ["open.feishu.cn"],
+    "secrets": [{
+      "key": "feishu_account",
+      "label": "飞书账号",
+      "source": "oauth",
+      "inject": { "header": "Authorization", "format": "Bearer {value}", "hosts": ["open.feishu.cn"] },
+      "oauth": {
+        "authorizeUrl": "https://open.feishu.cn/open-apis/authen/v1/authorize",
+        "tokenUrl": "https://open.feishu.cn/open-apis/authen/v1/access_token",
+        "clientId": "REPLACE_WITH_FEISHU_APP_ID",
+        "scopes": ["contact:user.base:readonly"],
+        "pkce": true,
+        "identity": {
+          "url": "https://open.feishu.cn/open-apis/authen/v1/user_info",
+          "labelPath": "data.open_id",
+          "displayTemplate": "{data.name}",
+          "avatarPath": "data.avatar_url"
+        },
+        "redirectPort": 53683
+      }
+    }]
+  },
+  "tools": [{
+    "name": "whoami",
+    "description": "查询当前连接的飞书账号身份。可传 authAccount 指定已连接账号；不传则使用默认账号。",
+    "parameters": { "type": "object", "properties": { "authAccount": { "type": "string", "description": "可选的 OAuth 账号 ID；从插件设置页的已连接账号列表中取得。" } } }
+  }]
+}

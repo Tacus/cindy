@@ -74,6 +74,14 @@ export const IM_DEFAULT_SETTINGS: ImDefaultSettings = {
   },
 };
 
+/** 飞书个人 bot 默认直接使用关联 Agent 的 Full Access；群聊仍由群权限档和
+ * turn policy 单独控制。其它渠道暂时继续沿用 Auto，逐渠道调通。 */
+export const IM_DEFAULT_SETTINGS_CHANNEL_OVERRIDES: Readonly<
+  Partial<Record<ImDefaultSettingsChannel, Partial<ImDefaultSettings>>>
+> = {
+  feishu: { permissionMode: 'bypassPermissions' },
+};
+
 export const IM_DEFAULT_SETTINGS_CHANNELS: readonly ImDefaultSettingsChannel[] = [
   'feishu',
   'slack',

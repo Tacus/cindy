@@ -1,0 +1,9 @@
+:root { color-scheme: light dark; }
+body { margin: 0; padding: 20px; color: var(--text-primary, #202124); background: var(--surface, #fff); font: 14px system-ui, sans-serif; }
+main { max-width: 560px; margin: 0 auto; } h1 { margin: 0 0 6px; font-size: 22px; }
+.muted, .status, .message { color: var(--text-secondary, #666); } .actions { display: flex; gap: 8px; margin: 16px 0; }
+button { border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; background: var(--accent, #2563eb); color: #fff; }
+button.secondary { background: var(--surface-secondary, #e8e8e4); color: inherit; } button:disabled { opacity: .55; cursor: default; }
+.accounts { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.account { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--border-default, #ddd); border-radius: 10px; }
+.account-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .default { color: var(--accent, #2563eb); font-size: 12px; }

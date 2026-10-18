@@ -11,6 +11,7 @@ import { app } from 'electron';
 
 import {
   IM_DEFAULT_SETTINGS,
+  IM_DEFAULT_SETTINGS_CHANNEL_OVERRIDES,
   IM_DEFAULT_SETTINGS_CHANNELS,
   type ImDefaultAgentKind,
   type ImDefaultAgentSettings,
@@ -42,9 +43,19 @@ const IM_DEFAULT_SETTINGS_DOCUMENT: ImDefaultSettingsDocument = {
   schemaVersion: SETTINGS_SCHEMA_VERSION,
   global: cloneSettings(IM_DEFAULT_SETTINGS),
   channels: Object.fromEntries(
-    IM_DEFAULT_SETTINGS_CHANNELS.map((channel) => [channel, cloneSettings(IM_DEFAULT_SETTINGS)]),
+    IM_DEFAULT_SETTINGS_CHANNELS.map((channel) => [
+      channel,
+      channelDefaults(channel),
+    ]),
   ) as Record<ImDefaultSettingsChannel, ImDefaultSettings>,
 };
+
+function channelDefaults(channel: ImDefaultSettingsChannel): ImDefaultSettings {
+  return cloneSettings({
+    ...IM_DEFAULT_SETTINGS,
+    ...IM_DEFAULT_SETTINGS_CHANNEL_OVERRIDES[channel],
+  });
+}
 
 function settingsFilePath(): string {
   const scoped = ownerScopedImUserDataPath('im-default-settings.json');
@@ -52,17 +63,20 @@ function settingsFilePath(): string {
   return scoped;
 }
 
-function normalizeSettings(raw: unknown): ImDefaultSettings {
-  if (!raw || typeof raw !== 'object') return { ...IM_DEFAULT_SETTINGS };
+function normalizeSettings(
+  raw: unknown,
+  defaults: ImDefaultSettings = IM_DEFAULT_SETTINGS,
+): ImDefaultSettings {
+  if (!raw || typeof raw !== 'object') return cloneSettings(defaults);
   const r = raw as Record<string, unknown>;
-  const agentKind = isImDefaultAgentKind(r.agentKind) ? r.agentKind : IM_DEFAULT_SETTINGS.agentKind;
+  const agentKind = isImDefaultAgentKind(r.agentKind) ? r.agentKind : defaults.agentKind;
   const rawAgents = isRecord(r.agents) ? r.agents : {};
   const legacySettings = legacyAgentSettings(r);
   return {
     agentKind,
     permissionMode: isImDefaultPermissionMode(r.permissionMode)
       ? r.permissionMode
-      : IM_DEFAULT_SETTINGS.permissionMode,
+      : defaults.permissionMode,
     // 旧键 `groupCtrPermissionMode` 只在「群 /ctr」时期存在过, 读侧回落一次 ——
     // 已经存过该键的用户升级后必须保持原选择, 不能静默回默认(存量兼容)。
     groupPermissionMode: readGroupPermissionMode(r),
@@ -98,8 +112,15 @@ function readGroupPermissionMode(r: Record<string, unknown>): ImDefaultPermissio
   return IM_DEFAULT_SETTINGS.groupPermissionMode;
 }
 
-function normalizeChannelSettings(raw: unknown): ImDefaultSettings {
-  return normalizeSettings(raw);
+function normalizeChannelSettings(
+  raw: unknown,
+  channel: ImDefaultSettingsChannel,
+): ImDefaultSettings {
+  const defaults = {
+    ...IM_DEFAULT_SETTINGS,
+    ...IM_DEFAULT_SETTINGS_CHANNEL_OVERRIDES[channel],
+  };
+  return normalizeSettings(raw, defaults);
 }
 
 function normalizeDocument(raw: unknown): ImDefaultSettingsDocument {
@@ -150,7 +171,7 @@ function normalizeDocument(raw: unknown): ImDefaultSettingsDocument {
       channels: Object.fromEntries(
         IM_DEFAULT_SETTINGS_CHANNELS.map((channel) => [
           channel,
-          normalizeChannelSettings(legacy),
+          normalizeChannelSettings(legacy, channel),
         ]),
       ) as Record<ImDefaultSettingsChannel, ImDefaultSettings>,
     };
@@ -163,7 +184,7 @@ function normalizeDocument(raw: unknown): ImDefaultSettingsDocument {
     channels: Object.fromEntries(
       IM_DEFAULT_SETTINGS_CHANNELS.map((channel) => [
         channel,
-        normalizeChannelSettings(rawChannels[channel]),
+        normalizeChannelSettings(rawChannels[channel], channel),
       ]),
     ) as Record<ImDefaultSettingsChannel, ImDefaultSettings>,
   };
@@ -235,11 +256,12 @@ export function readImDefaultSettingsState(
   channel?: ImDefaultSettingsChannel,
 ): OverrideSettingsState<ImDefaultSettings> {
   const value = readImDefaultSettings(channel);
-  const customizedKeys = settingsCustomizedKeys(value, IM_DEFAULT_SETTINGS);
+  const defaults = channel ? channelDefaults(channel) : IM_DEFAULT_SETTINGS;
+  const customizedKeys = settingsCustomizedKeys(value, defaults);
   return {
     value,
     isCustomized: customizedKeys.length > 0,
-    defaults: cloneSettings(IM_DEFAULT_SETTINGS),
+    defaults: cloneSettings(defaults),
     customizedKeys,
   };
 }
@@ -295,7 +317,7 @@ export function resetImDefaultSettingsChannel(
   store.writePatch({
     channels: {
       ...document.channels,
-      [channel]: cloneSettings(IM_DEFAULT_SETTINGS),
+      [channel]: channelDefaults(channel),
     },
   });
   log.info('im default settings reset', { channel });

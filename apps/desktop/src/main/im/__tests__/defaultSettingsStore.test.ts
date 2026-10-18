@@ -392,7 +392,7 @@ describe('im default settings store', () => {
     resetImDefaultSettingsChannel('feishu');
 
     expect(readImDefaultSettingsState('feishu').isCustomized).toBe(false);
-    expect(readImDefaultSettings('feishu')).toEqual(IM_DEFAULT_SETTINGS);
+    expect(readImDefaultSettings('feishu').permissionMode).toBe('bypassPermissions');
     expect(readImDefaultSettings('discord').agents['claude-code'].model).toBe('claude-sonnet-4-8');
   });
 
@@ -410,7 +410,7 @@ describe('im default settings store', () => {
 
     const persisted = JSON.parse(fs.readFileSync(settingsFile(), 'utf-8'));
     expect(persisted.global).toBeUndefined();
-    expect(persisted.channels.feishu.permissionMode).toBe('bypassPermissions');
+    expect(persisted.channels?.feishu?.permissionMode).toBeUndefined();
     expect(persisted.channels.slack.agentKind).toBe('codex');
   });
 
