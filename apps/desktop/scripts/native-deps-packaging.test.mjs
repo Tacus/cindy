@@ -43,6 +43,10 @@ describe('native dependency packaging', () => {
     ['darwin', 'arm64'],
   ])('uses the complete %s/%s prebuild without requiring compilation', (platform, arch) => {
     const f = fixture(platform, arch);
+    const otherArch = arch === 'x64' ? 'arm64' : 'x64';
+    const otherPrebuild = path.join(f.packageDir, 'prebuilds', platform + '-' + otherArch);
+    fs.mkdirSync(otherPrebuild, { recursive: true });
+    fs.writeFileSync(path.join(otherPrebuild, 'wrong-arch.native'), 'wrong architecture');
     expect(preparePackagedNodePty(f.buildPath, platform, arch)).toEqual({
       rebuild: false,
       nativePath: path.join(f.prebuildDir, 'pty.node'),
@@ -50,6 +54,7 @@ describe('native dependency packaging', () => {
     for (const file of f.files) {
       expect(fs.readFileSync(path.join(f.prebuildDir, file), 'utf8')).toBe('fixture binary');
     }
+    expect(fs.existsSync(otherPrebuild)).toBe(false);
   });
 
   it.each(windowsFiles)('rejects a missing Windows runtime file: %s', (file) => {

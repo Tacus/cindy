@@ -134,6 +134,21 @@ git merge --no-ff --signoff upstream/main
 的 `install_app_update` 和内置确认 / 更新状态机；不能拿官方更新按钮假装安装了包含
 个人改动的 fork 产物。工具不支持或没有可安装版本时，如实说明，不旁装 Release 绕过。
 
+### macOS 个人包首次运行
+
+个人 macOS 包使用 ad-hoc 签名，不能通过 Gatekeeper 的分发校验。解出 CindyPersonal.app
+后，在 Finder 中对应用右键选择「打开」并确认一次。若系统仍显示「无法打开」，在终端对
+刚解出的应用路径清除下载隔离标记，再启动：
+
+~~~bash
+APP="$HOME/Desktop/CindyPersonal-Intel/CindyPersonal.app"
+xattr -dr com.apple.quarantine "$APP"
+open "$APP"
+~~~
+
+这只适用于个人内部包。要让其他 Mac 无需手动放行，必须改用 Developer ID Application
+签名并完成 Apple 公证；源码构建机没有该发布凭证时不要把 ad-hoc 包当作正式分发包。
+
 ## 5. 每次同步 / 构建的交付记录
 
 至少记录：个人 commit 与 DCO、官方基准、构建身份（official / personal）与区域、测试 /

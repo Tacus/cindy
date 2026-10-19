@@ -40,6 +40,17 @@ export function preparePackagedNodePty(buildPath: string, platform: string, arch
     );
   }
 
+  // The workspace copy contains prebuilds for every supported desktop target.
+  // A packaged app is single-platform/single-arch, so carrying another target's
+  // native files into app.asar.unpacked is both wasteful and dangerous: signing
+  // and post-package scanners may inspect them, and a stale resolver can select
+  // the wrong native helper. Keep only the prebuild selected by this package.
+  const prebuildsRoot = path.join(packageDir, 'prebuilds');
+  for (const entry of fs.readdirSync(prebuildsRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name === platform + '-' + arch) continue;
+    fs.rmSync(path.join(prebuildsRoot, entry.name), { recursive: true, force: true });
+  }
+
   // node-pty loads build/Release and build/Debug before prebuilds. Remove copied
   // local bindings so a stale Node ABI or another architecture cannot shadow the target.
   for (const variant of ['Release', 'Debug']) {
