@@ -81,10 +81,11 @@ git merge --no-ff --signoff upstream/main
   单实例锁因此与官方安装互斥（同一时间只能跑一个，由 Electron 单实例锁硬保证，
   第二个进程会退出并聚焦已运行窗口）。要跑隔离实验用显式
   `--user-data-dir=<目录>`（`resolveRegionUserDataDirName` 尊重该开关，不经身份档案）。
-- **schema 耦合**：共用 profile 要求两边数据库版本兼容（今天都是 125）。任一边先
-  迁库（如官方应用内更新，或个人构建合并了带新 migration 的 upstream），另一边会
-  fail-closed 拒绝启动而不是损坏数据。此时必须重建个人构建 / 更新官方版后再用；
-  排查时看应用日志里的 schema 校验失败，不要删库。
+- **schema 耦合**：共用 profile 要求两边数据库版本兼容（截至 2026-10-19 的官方同步，
+  个人集成分支已到 **129**；该次合并带入 0126—0129 四个 migration，官方安装也要到 129
+  才能继续共用 profile）。任一边先迁库（如官方应用内更新，或个人构建合并了带新 migration
+  的 upstream），另一边会 fail-closed 拒绝启动而不是损坏数据。此时必须重建个人构建 /
+  更新官方版后再用；排查时看应用日志里的 schema 校验失败，不要删库。
 - **登录凭据**：Windows 上 safeStorage 走 DPAPI（用户级），共享 profile 的加密凭据
   两边都能解；macOS 钥匙串按 `app.name` 分条目，共享 profile 的凭据对个人构建
   不可解 —— **共享模式只承诺 Windows**，macOS 个人构建要用独立 profile 需另行设计。

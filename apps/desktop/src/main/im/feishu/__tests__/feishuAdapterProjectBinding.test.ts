@@ -87,6 +87,24 @@ describe('feishu adapter project binding', () => {
   });
 });
 
+describe('feishu adapter on a companion connection', () => {
+  const companionAdapter = buildFeishuAdapter(fakeIm, CONFIG, { companionBotId: 'bot-1' });
+
+  it('伙伴连接不走设置页的项目绑定，恒用托管目录', () => {
+    mocks.resolve.mockClear();
+    expect(companionAdapter.sessions.defaultWorkingDir?.('cli_abc')).toBe(
+      path.join(os.tmpdir(), 'feishu-managed', 'cli_abc'),
+    );
+    expect(mocks.resolve).not.toHaveBeenCalled();
+  });
+
+  it('伙伴连接不注入设置页的角色/规则（伙伴身份来自 SOUL）', async () => {
+    mocks.instructions.mockClear().mockReturnValue('<bot_instructions>R</bot_instructions>\n\n');
+    await expect(companionAdapter.prepareAgentTurnText?.(dmEvent())).resolves.toBeNull();
+    expect(mocks.instructions).not.toHaveBeenCalled();
+  });
+});
+
 describe('feishu adapter bot instructions', () => {
   beforeEach(() => {
     mocks.instructions.mockReset().mockReturnValue('');

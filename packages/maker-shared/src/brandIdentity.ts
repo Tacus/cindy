@@ -295,9 +295,9 @@ export function resolveCindyBuildIdentity(raw?: string | null): CindyBuildIdenti
  *     与官方安装互斥（约定不同时运行）；要跑隔离实验用显式 `--user-data-dir`，
  *     那条路径尊重调用方、不受本档案影响；
  *   - 深链只注册 `cindy-personal://`:官方 `cindy://` / `xdt-maker://` 不碰。
- * ⚠️ 共用 profile 意味着 schema 必须与官方安装兼容：今天两边都是 125；任一边先
- * 迁库，另一边会 fail-closed 拒绝启动，需要重建 / 更新后再用（见
- * docs/dev-rules/personal-fork-development.md）。Windows 上 safeStorage 走
+ * ⚠️ 共用 profile 意味着 schema 必须与官方安装兼容：个人集成分支在 2026-10-19 的
+ * 官方同步后为 129；任一边先迁库，另一边会 fail-closed 拒绝启动，需要重建 / 更新
+ * 后再用（见 docs/dev-rules/personal-fork-development.md）。Windows 上 safeStorage 走
  * DPAPI（用户级）所以共用登录态可行；macOS 钥匙串按 app.name 分条目，共用
  * profile 的凭据对个人构建不可解 —— 目前只承诺 Windows。
  * dbFilePrefix / updaterName / cdnPrefix 与官方同值 —— dbFilePrefix 必须同值

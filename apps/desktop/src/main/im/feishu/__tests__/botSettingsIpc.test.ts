@@ -64,7 +64,13 @@ vi.mock('../../../localDb/client/current', () => ({
     fixture.databaseOwners.push(owner);
     return {
       drizzle: {
-        select: () => ({ from: () => ({ where: () => fixture.query(owner) }) }),
+        select: () => ({
+          from: () => ({
+            // listSessions 用到 leftJoin(bot_session_links) 过滤伙伴接管行。
+            leftJoin: () => ({ where: () => fixture.query(owner) }),
+            where: () => fixture.query(owner),
+          }),
+        }),
       },
     };
   },

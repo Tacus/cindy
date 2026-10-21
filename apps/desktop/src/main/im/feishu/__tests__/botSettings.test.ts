@@ -149,6 +149,31 @@ describe('planFeishuWorkingDirMigration', () => {
     ).toEqual([]);
   });
 
+  it('已被伙伴接管的行不随设置页绑定迁移（绑定与解绑两个方向）', () => {
+    // 伙伴专线任务的工作区由伙伴自己决定，迁移它会改动用户没碰过的任务并清掉
+    // 续接状态。两个方向都要守住：next 有值（绑定/更换）与 next 为 null（解绑）。
+    const managedA = managedOf('bot_a');
+    const rows = [
+      { id: 's-settings', ...botA, workingDir: managedA },
+      { id: 's-bot-managed', ...botA, workingDir: managedA, botLinked: true },
+      { id: 's-bot-previous', ...botA, workingDir: '/work/old-project', botLinked: true },
+    ];
+    expect(
+      planFeishuWorkingDirMigration(rows, {
+        nextDir: '/work/new-project',
+        previousDir: '/work/old-project',
+        managedDirFor: managedOf,
+      }),
+    ).toEqual([{ id: 's-settings', workingDir: '/work/new-project', workspaceKind: 'project' }]);
+    expect(
+      planFeishuWorkingDirMigration(rows, {
+        nextDir: null,
+        previousDir: '/work/old-project',
+        managedDirFor: managedOf,
+      }),
+    ).toEqual([]);
+  });
+
   it('目录比较走存储归一化（尾斜杠 / 反斜杠 / 长路径前缀）', () => {
     const plan = planFeishuWorkingDirMigration(
       [{ id: 's1', ...botA, workingDir: `${managedOf('bot_a')}${path.sep}` }],

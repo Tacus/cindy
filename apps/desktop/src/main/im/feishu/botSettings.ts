@@ -164,6 +164,16 @@ export interface FeishuWorkingDirSessionRow {
   id: string;
   botAppId: string | null;
   workingDir: string | null;
+  /**
+   * 该行已被伙伴（Bot）接管（`bot_session_links` 有记录）。
+   *
+   * 防御性守卫：伙伴专线目前落在 `source='bot'` 的自有会话上（见
+   * `imBotBindingRuntime.isActiveSession`），正常不会出现在本函数的输入里；
+   * 但一旦历史数据或未来接线让被接管的行落到 `source='feishu'`，设置页的绑定
+   * 变更不能把它一起搬走（伙伴工作区不由渠道绑定决定，见
+   * `docs/product-rules/cindy-bots-runtime.md`）。
+   */
+  botLinked?: boolean;
 }
 
 export interface FeishuWorkingDirMigration {
@@ -179,7 +189,9 @@ export interface FeishuWorkingDirMigration {
  *   - 绑定 / 更换：仍停在托管目录、或停在上一绑定目录的行 → 新绑定目录，归
  *     'project' 分组；
  *   - 解绑：停在上一绑定目录的行 → 各自 bot 的托管目录，归 'dialogue' 分组；
- *   - 停在其它目录的行（用户显式切出去的会话）一律不动。
+ *   - 停在其它目录的行（用户显式切出去的会话）一律不动；
+ *   - 已被伙伴接管的行（`botLinked`）一律不动——迁移伙伴专线会改用户没碰过的
+ *     任务目录并清掉续接状态。
  *
  * 目录按存储归一化比较（分隔符 / 尾斜杠 / Windows 长路径前缀），不做 worktree
  * 折叠——这里比的是「同一个物理目录」，不是项目归组。
@@ -196,6 +208,7 @@ export function planFeishuWorkingDirMigration(
   const previous = normalizeWorkingDirForStorage(args.previousDir);
   const out: FeishuWorkingDirMigration[] = [];
   for (const row of rows) {
+    if (row.botLinked) continue;
     if (!row.botAppId || !row.workingDir) continue;
     const current = normalizeWorkingDirForStorage(row.workingDir);
     if (!current) continue;

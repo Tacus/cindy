@@ -16,7 +16,7 @@ import { eq } from 'drizzle-orm';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 
 import { getDbClient } from '../../localDb/client/current';
-import { sessions } from '../../localDb/schema';
+import { botSessionLinks, sessions } from '../../localDb/schema';
 import { createLogger } from '../../logger';
 import { assertTrustedAppRendererEvent } from '../../security/trustedAppRenderer.js';
 import { throwIpcError } from '../../utils/ipcValidate.js';
@@ -47,18 +47,25 @@ const log = createLogger('im:feishu-bot-settings');
 function realMigrationDeps(): FeishuWorkingDirMigrationDeps {
   return {
     listSessions: async () => {
+      // 已被伙伴接管的会话（bot_session_links 有行）不参与设置页的绑定迁移。
+      // 伙伴专线今天落在 source='bot'（见 imBotBindingRuntime.isActiveSession），
+      // 正常取不到；这里保留过滤是防御历史数据/未来接线，避免把用户没碰过的伙伴
+      // 任务搬到设置页绑定的目录并清掉续接状态。
       const rows = await getDbClient()
         .drizzle.select({
           id: sessions.id,
           botAppId: sessions.feishuBotAppId,
           workingDir: sessions.workingDir,
+          linkedId: botSessionLinks.id,
         })
         .from(sessions)
+        .leftJoin(botSessionLinks, eq(botSessionLinks.sessionId, sessions.id))
         .where(eq(sessions.source, 'feishu'));
       return rows.map((row) => ({
         id: row.id,
         botAppId: row.botAppId ?? null,
         workingDir: row.workingDir ?? null,
+        botLinked: Boolean(row.linkedId),
       }));
     },
     switchWorkingDir: (item) =>

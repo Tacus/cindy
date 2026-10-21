@@ -300,8 +300,11 @@ export function buildFeishuAdapter(
       workspaceKind: 'dialogue',
       // 托管目录语义保持不动(reconcile / 归属判断都按它算); 新会话的落点由
       // defaultWorkingDir 读用户绑定: 项目目录 ?? 托管目录。
+      // 伙伴自有连接不吃设置页的项目绑定(伙伴的工作区由伙伴自己决定, 见
+      // cindy-bots-runtime.md「伙伴不直接绑定代码项目」), 恒用托管目录。
       ensureWorkingDir: ensureFeishuManagedWorkingDir,
-      defaultWorkingDir: (botAppId) => resolveFeishuWorkingDir(botAppId),
+      defaultWorkingDir: (botAppId) =>
+        companion ? ensureFeishuManagedWorkingDir(botAppId) : resolveFeishuWorkingDir(botAppId),
       extraInsertColumns: (botAppId, userId) => ({
         feishuBotAppId: botAppId,
         feishuOpenId: userId,
@@ -438,7 +441,9 @@ export function buildFeishuAdapter(
     prepareAgentTurnText: async (event) => {
       const lane = decodeFeishuLaneUserId(event.senderId);
       // 主人的角色/规则每轮注入送模型文本(不落库、不进「附带上下文」快照)。
-      const botInstructions = buildFeishuBotInstructionBlock();
+      // 伙伴自有连接的飞书实例不读设置页那份人格(伙伴身份来自 SOUL), 见
+      // docs/product-rules/cindy-bots-runtime.md「不读 设置 → IM 机器人」。
+      const botInstructions = companion ? '' : buildFeishuBotInstructionBlock();
       if (!lane) {
         // DM: 没有群历史前缀, 但角色/规则同样每轮生效。
         if (!botInstructions) return null;
