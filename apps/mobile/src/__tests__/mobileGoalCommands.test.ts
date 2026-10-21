@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { parseGoalCommand } from '@cindy/maker-shared/goal-command';
 import { executeMobileGoalCommand, parseMobileDesktopCommand } from '@/session/desktopSlashCommands';
 import { humanizeRemoteError } from '@/device-link/remoteStatus';
+import { incomingShareSlotOrder } from '@/session/mobileLocalAttachmentUpload';
 import { composerDocumentProjectedText, emptyComposerDocument, normalizeComposerDocument, reconcileComposerProjectedText, serializeComposerDocument, textComposerDocument } from '@/session/composerDocument';
 
 // Execute the actual page callbacks, excluding unrelated native/network UI.
@@ -25,13 +26,18 @@ const newCreate = callback('app/sessions/new.tsx', 'create');
 const goalCreate = callback('app/sessions/new.tsx', 'createGoalSession');
 const sessionSource = ts.createSourceFile('session.tsx', readFileSync(resolve(process.cwd(), 'app/sessions/[sessionId].tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 let sendSource = '';
+let readRouteParamSource = '';
 function findSend(node: ts.Node) {
   if (ts.isFunctionDeclaration(node) && node.name?.text === 'send') sendSource = node.getText(sessionSource);
+  if (ts.isFunctionDeclaration(node) && node.name?.text === 'readRouteParam') readRouteParamSource = node.getText(sessionSource);
   ts.forEachChild(node, findSend);
 }
 findSend(sessionSource);
 if (!sendSource) throw new Error('Missing complete SessionScreen.send entry');
-const compiledExisting = ts.transpileModule(`${sendSource}\nreturn send;`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+if (!readRouteParamSource) throw new Error('Missing SessionScreen.readRouteParam helper');
+// Keep page-local route parsing with send; missing closure dependencies would
+// otherwise be caught by send and surface only as a misleading outbox failure.
+const compiledExisting = ts.transpileModule(`${readRouteParamSource}\n${sendSource}\nreturn send;`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 
 function newHarness(text = '/goal target') {
   const noop = vi.fn();
@@ -73,6 +79,7 @@ function existingHarness(args = 'target') {
     setError: vi.fn(), setGoalError: vi.fn(), t: (key: string) => key,
     isRemoteSessionMissing: () => false, readSessionRowNow: () => session, goalBusy: false, setGoalBusy: vi.fn(),
     executeMobileGoalCommand, sessionId: 'existing-task', deviceId: 'host', deviceIdRef: { current: 'host' },
+    params: {} as Record<string, string | string[] | undefined>,
     outboxSessionAliveRef: { current: 'existing-task' }, getMobileAuthOwner: () => ({}), isMobileAuthOwnerCurrent: () => true,
     maker: { goal: { set: vi.fn(async () => {}), clear: vi.fn(async () => {}), getStatus: vi.fn(async () => ({ status: 'active', objective: 'target' })) } },
     remoteSessionStore: { setGoalStatus: vi.fn(), acquireSessionMessageWork: vi.fn(() => ({ release })), getSessionDeviceId: () => 'host' }, setContextSheetView: vi.fn(), setContextSheetOpen: vi.fn(),
@@ -83,6 +90,7 @@ function existingHarness(args = 'target') {
     composerDocumentProjectedText, serializeComposerDocument, reconcileComposerProjectedText, emptyComposerDocument,
     canUseComposer: true, attachments: [] as unknown[], attachmentsRef: { current: [] as unknown[] }, pendingUploads: [],
     sendInFlightRef: { current: false }, sending: false, setSending: vi.fn((_sending: boolean) => {}), currentSession: session,
+    invalidateHistoryRecoveryNavigation: vi.fn(),
     outboxConnectionBlockedNow: () => false, getPendingUploadCount: () => 0,
     parseMobileLocalSystemCommand: () => null, parseMobileDesktopCommand, pendingSkillSelectionRef: { current: null },
     resolveSessionAgentKind: () => 'pi', modelNeedsReselection: () => false, getCachedDeviceProviders: () => undefined,
@@ -91,7 +99,7 @@ function existingHarness(args = 'target') {
     dismissPromptRecommendation: noop, hydrateComposerMessageReferenceBodies: async (doc: unknown) => doc,
     resolvePastedSessionLinkLabel: noop, requestMessageListFollowLatest: noop, hasPastePlaceholders: () => false,
     beginOutboxAttachmentHandoff: async () => ({ prepare: async () => [], release: noop }),
-    attachmentPreviews: {}, buildOutboxItem: (input: unknown) => input, createOutboxClientId: () => 'ordinary-message',
+    attachmentPreviews: {}, incomingShareSlotOrder, buildOutboxItem: (input: unknown) => input, createOutboxClientId: () => 'ordinary-message',
     mobileDurableOutbox: { add: vi.fn(async (_record: unknown) => {}) }, rememberSentAttachmentPreviews: noop,
     releaseUploadedSources: noop, setMediaAssetAttachments: noop, setAttachmentPreviews: noop,
     composerAnnotationsRef: { current: null }, setAttachments: noop, setAttachmentError: noop,
@@ -149,6 +157,7 @@ describe('existing task /goal send boundary', () => {
     expect(h.bindings.maker.goal.set).toHaveBeenCalledExactlyOnceWith({ sessionId: 'existing-task', objective: 'target' });
     expect(h.bindings.remoteSessionStore.setGoalStatus).toHaveBeenCalledWith('existing-task', { status: 'active', objective: 'target' });
     expect(h.bindings.applyComposerDocument).toHaveBeenCalledWith(emptyComposerDocument());
+    expect(h.bindings.invalidateHistoryRecoveryNavigation).toHaveBeenCalledOnce();
   });
   it('bare /goal opens the existing panel', async () => {
     const h = existingHarness(''); await h.run();
@@ -193,6 +202,7 @@ describe('existing task /goal send boundary', () => {
     expect(h.bindings.sendInFlightRef.current).toBe(true);
     await h.run();
     expect(h.bindings.maker.goal.set).toHaveBeenCalledOnce();
+    expect(h.bindings.invalidateHistoryRecoveryNavigation).toHaveBeenCalledOnce();
     expect(h.release).not.toHaveBeenCalled();
     finish();
     await first;
@@ -212,12 +222,33 @@ describe('existing task /goal send boundary', () => {
     h.bindings.goalBusy = false;
     h.bindings.attachmentsRef.current = [];
     h.bindings.composerDocumentRef.current = textComposerDocument('ordinary follow-up');
+    h.bindings.setError.mockClear();
     await h.run();
+    expect(h.bindings.setError).toHaveBeenCalledExactlyOnceWith(null);
     expect(h.bindings.mobileDurableOutbox.add).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       item: expect.objectContaining({ sessionId: 'existing-task', text: 'ordinary follow-up' }),
     }));
     expect(h.bindings.sendInFlightRef.current).toBe(false);
     expect(h.bindings.sending).toBe(false);
     expect(h.release).toHaveBeenCalledTimes(2);
+    expect(h.bindings.invalidateHistoryRecoveryNavigation).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([false, true])('preserves the bot resource on a follow-up after Goal, array route params=%s', async arrayParams => {
+    const h = existingHarness();
+    const routeValue = (value: string) => arrayParams ? [value] : value;
+    h.bindings.params = {
+      resourceKind: routeValue('bot'),
+      resourceCollectionId: routeValue('companions'),
+      resourceId: routeValue('bot-1'),
+    };
+    await h.run();
+    h.bindings.composerDocumentRef.current = textComposerDocument('ordinary follow-up');
+    await h.run();
+    expect(h.bindings.setError).toHaveBeenLastCalledWith(null);
+    expect(h.bindings.mobileDurableOutbox.add).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      item: expect.objectContaining({ sessionId: 'existing-task', text: 'ordinary follow-up' }),
+      resourceRef: { collectionId: 'companions', kind: 'bot', id: 'bot-1' },
+    }));
   });
 });

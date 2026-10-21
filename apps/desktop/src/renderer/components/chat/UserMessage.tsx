@@ -65,7 +65,6 @@ import {
   useAgentCapabilities,
   type AgentKind as MakerAgentKind,
 } from '@/hooks/useAgentCapabilities';
-import { useAgentOnOtherDevice } from './AgentOnOtherDeviceContext';
 import { useChatSessionFile } from './ChatSessionFileContext';
 import { isRemoteFileOrigin, originDeviceId, toRemoteMediaOrigin } from '@/lib/sessionFileOrigin';
 import { rewriteToRemoteMediaOrigin } from '../../../shared/remoteMediaUrl';
@@ -81,7 +80,7 @@ import { quoteSegmentsToComposerDocument } from '@/lib/composerQuoteDocument';
 import { ChatImageView } from './ChatImageView';
 import { TextLightbox } from './TextLightbox';
 import { ToolPayloadLightbox } from './ToolPayloadLightbox';
-import { MessageActionBar } from './MessageActionBar';
+import { BubbleHoverToolbar, MessageActionBar } from './MessageActionBar';
 import { shareSelectionStore } from './shareSelectionStore';
 import { ErrorMessageCard } from './ErrorMessageCard';
 import { useForkAtMessage, textToTiptapDoc } from './useForkAtMessage';
@@ -95,6 +94,7 @@ import { UserMessageEditBox } from './UserMessageEditBox';
 import HookTaskCard from './HookTaskCard';
 import { useFileChipContextMenu } from './useFileChipContextMenu';
 import { UserAttachmentChip } from './UserAttachmentChip';
+import { UserMessageImageLink } from './UserMessageImageLink';
 import {
   AUTOMATION_USER_MESSAGE_VISUAL_LINE_THRESHOLD,
   LONG_USER_MESSAGE_VISUAL_LINE_THRESHOLD,
@@ -113,6 +113,7 @@ import { splitHostCapabilityDirective } from '@/cindy-brain/hostCapabilityInvoca
 import {
   GhostFulfillmentContext,
   GhostSummonCard,
+  hasGhostSummonFulfillment,
   type GhostSummonDisplay,
 } from './GhostSummonCard';
 import { MessageSourceLabels } from './MessageSourceLabels';
@@ -245,6 +246,7 @@ function UserFileChip({
   // 按 workdir 风格直接 join(与 useResolvedMarkdownTarget 的 remote 分支同策)。
   const chipRemote = isRemoteFileOrigin(useChatSessionFile().origin);
   const ctxMenu = useFileChipContextMenu({
+    fileName: refText,
     getAbsPath: async () => {
       if (chipRemote) return resolveLocalPath(refText, workingDir);
       const r = await resolveLocalPathSmart(refText, workingDir);
@@ -262,7 +264,10 @@ function UserFileChip({
         tooltip={refText}
         tooltipMono
         ariaLabel={fileName}
-        onClick={onClick}
+        onClick={(event) => ctxMenu.onActivate(event, () => onClick(event))}
+        onAuxClick={(event) => {
+          if (event.button === 1) ctxMenu.onActivate(event, () => onClick(event));
+        }}
         onContextMenu={ctxMenu.onContextMenu}
         className="relative top-[-1px] -my-[1px] max-w-[min(240px,55vw)] align-middle"
       />
@@ -327,15 +332,11 @@ function renderTextWithLinks(
     } else {
       const p = match.text;
       result.push(
-        <button
+        <UserMessageImageLink
           key={`${keyPrefix}-img-${match.index}`}
-          type="button"
-          onClick={() => onImageClick?.(toLocalFileUrl(p))}
-          // 同 UserMessageUrlLink:可点 = 正文色 + 常显下划线,不再靠 --msg-link 颜色。
-          className="underline underline-offset-2 cursor-pointer break-all"
-        >
-          {p}
-        </button>,
+          path={p}
+          onOpen={onImageClick}
+        />,
       );
     }
     lastIndex = match.index + match.length;
@@ -867,10 +868,8 @@ export function UserMessage({
   // 远端 cc daemon 会话暂不支持 Fork/Rewind 依赖的 query rebuild (MVP),
   // remoteHostId 非空时直接关掉这两个能力, 避免点了落到后端错误。
   const isRemote = Boolean(remoteHostId);
-  // Agent 在另一台电脑运行：会话记录在那台，分叉入口先隐藏(回退照常可用)。
-  const agentOnOtherDevice = useAgentOnOtherDevice();
   const forkSupported =
-    !isRemote && !agentOnOtherDevice && (!agentKind || (capabilities?.fork?.supported ?? true));
+    !isRemote && (!agentKind || (capabilities?.fork?.supported ?? true));
   const rewindSupported =
     !isRemote &&
     (!agentKind || (capabilities?.rewind?.supported ?? true));
@@ -970,7 +969,7 @@ export function UserMessage({
   const ghostMentionFulfilled =
     ghostDirective?.kind === 'mention' &&
     Boolean(
-      ghostFulfilledIds && ghostDirective.ghosts.some((g) => ghostFulfilledIds.has(g.ghostId)),
+      ghostDirective.ghosts.some((g) => hasGhostSummonFulfillment(ghostFulfilledIds, g.ghostId)),
     );
   // 语义自主召唤:消息一个触发词都没命中(无任何追加段),AI 本轮仍真调了
   // ghost_call → 合成 semantic 展示数据,渲染同一行召唤标注(与硬指令/兑现
@@ -1252,6 +1251,12 @@ export function UserMessage({
         ? t('chat.userMessage.orcaFromWorkerNamed', { role: orcaWorkerRole })
         : t('chat.userMessage.orcaFromWorker');
 
+  const attachmentsInBubble =
+    simplifiedBotConversation && !editing && !orcaCommunication && !hookSource && (hasImages || hasFiles);
+  // 伙伴私聊：操作栏挂在气泡左侧、悬停浮出（与群聊同一 BubbleHoverToolbar）；没有气泡时仍在下方。
+  const bubbleActions = simplifiedBotConversation && !editing && !orcaCommunication && !hookSource
+    && Boolean(inlineQuoteCount > 0 || displayBubbleBody.trim() || ghostChipDisplay || attachmentsInBubble);
+
   // Attachments belong to the user message independently of its visual shell.
   const messageActions = (
     <MessageActionBar
@@ -1261,6 +1266,7 @@ export function UserMessage({
       align={hookSource ? 'left' : 'right'}
       hovered={hovered}
       simplifiedBotConversation={simplifiedBotConversation}
+      compact={bubbleActions}
       onFork={!isBlocked && canFork ? handleFork : undefined}
       onAddToChat={!isBlocked && messageDeepLink ? handleAddToChat : undefined}
       onShareAsImage={handleShareAsImage}
@@ -1298,7 +1304,7 @@ export function UserMessage({
       <div
         className={cn(
           'flex flex-wrap items-end gap-1.5',
-          hookSource ? 'justify-start' : 'justify-end',
+          hookSource || attachmentsInBubble ? 'justify-start' : 'justify-end',
         )}
       >
         {files.map((f, idx) => (
@@ -1328,6 +1334,7 @@ export function UserMessage({
       className={cn(
         'flex w-full',
         orcaCommunication || hookSource ? 'justify-start' : 'justify-end',
+        bubbleActions && 'group/message',
       )}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -1341,7 +1348,11 @@ export function UserMessage({
               // 附件 chips 行保持右对齐不动。
               editing
               ? 'w-full max-w-[720px] items-end'
-              : 'max-w-[488px] items-end',
+              : // 伙伴私聊与群聊同一气泡上限（bot-group-chat.md §5）。
+                // 左侧留出贴边操作栏的位置。
+                simplifiedBotConversation
+                ? 'max-w-[min(720px,calc(100%-96px))] items-end'
+                : 'max-w-[488px] items-end',
         )}
       >
         {sharedAuthorName && (
@@ -1415,6 +1426,7 @@ export function UserMessage({
             {fileAttachmentNodes}
             <HookTaskCard
               im={hookSource.im}
+              origin={hookSource.origin}
               userText={displayContent}
               collapseUserText={hookSource.contentFormat === 'user-text'}
               threadContext={hookSource.threadContext}
@@ -1451,8 +1463,9 @@ export function UserMessage({
                 </span>
               </span>
             )}
-            {imageAttachmentNodes}
-            {fileAttachmentNodes}
+            {/* 伙伴私聊：图片与文件随正文进同一个气泡（编辑态照常在上方）。 */}
+            {!attachmentsInBubble && imageAttachmentNodes}
+            {!attachmentsInBubble && fileAttachmentNodes}
             {/* edit-last-message: 编辑态原地替换文本气泡 + 操作条(附件 chips 保持
             只读展示在上方);非编辑态走原有渲染。 */}
             {editing && sessionId && messageClientId ? (
@@ -1500,10 +1513,11 @@ export function UserMessage({
                 {/* 召唤标注行(chip)嵌进气泡顶部;正文永远回归文字气泡(2026-07-29
             取消合并形态)。气泡在有标注、有引用或有正文任一时渲染——$指令
             无余文时气泡只剩标注行。 */}
-                {(inlineQuoteCount > 0 || displayBubbleBody.trim() || ghostChipDisplay) && (
+                {(inlineQuoteCount > 0 || displayBubbleBody.trim() || ghostChipDisplay || attachmentsInBubble) && (
                   <div
                     // 只剩插件标注行的气泡:分享图会剥掉标注,整泡一起去掉,不留空壳。
-                    {...(inlineQuoteCount === 0 && !displayBubbleBody.trim()
+                    // 伙伴私聊里附件也在气泡内,有附件就不是空壳。
+                    {...(inlineQuoteCount === 0 && !displayBubbleBody.trim() && !attachmentsInBubble
                       ? { [SHARE_SOURCE_ATTR]: '' }
                       : {})}
                     className={cn(
@@ -1714,6 +1728,13 @@ export function UserMessage({
                         )}
                       </button>
                     )}
+                    {attachmentsInBubble && (
+                      <div className={cn('flex flex-col items-start gap-2', (inlineQuoteCount > 0 || displayBubbleBody.trim() || ghostChipDisplay) && 'mt-2')}>
+                        {imageAttachmentNodes}
+                        {fileAttachmentNodes}
+                      </div>
+                    )}
+                    {bubbleActions && <BubbleHoverToolbar side="left">{messageActions}</BubbleHoverToolbar>}
                   </div>
                 )}
                 {/* ghost-summon-pill:未兑现的软提示保持低调胶囊,留在气泡下方
@@ -1738,7 +1759,7 @@ export function UserMessage({
                 {/* message-actions V1.2: hover-revealed bar below the bubble,
                 right-aligned, order [time][copy][fork][edit][undo][more]。被拦消息只保留
             编辑和链接复制,fork/rewind/delete 对未发消息无意义。 */}
-                {messageActions}
+                {!bubbleActions && messageActions}
               </>
             )}
           </>

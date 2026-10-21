@@ -229,9 +229,22 @@ describe('LibraryBindingStore', () => {
     const saved = path.join(tmp, 'saved-parent');
     await fs.promises.rename(candidate, saved);
     await fs.promises.mkdir(candidate);
+    // Windows inode numbers can exceed Number.MAX_SAFE_INTEGER, so two real
+    // directories may compare equal. Exercise this root-rejection branch with
+    // a distinct identity, then restore native stats for the successful retry.
+    const { rootIdentity, record } = JSON.parse(contents).pendingRelocation;
+    const lstat = fs.promises.lstat.bind(fs.promises);
+    const parentIdentity = vi.spyOn(fs.promises, 'lstat').mockImplementation(async (...args) => {
+      const stat = await lstat(...args);
+      if (args[0] === record.realPathAtGrant) {
+        Object.assign(stat, { ino: rootIdentity.ino === 1 ? 2 : 1 });
+      }
+      return stat;
+    });
     const restarted = new LibraryBindingStore(deps);
     await expect(restarted.relocateBinding('hello', '_ns__acme__hello')).rejects.toThrow('root identity changed');
     expect(await fs.promises.readFile(bindingFile, 'utf8')).toBe(contents);
+    parentIdentity.mockRestore();
     await fs.promises.rm(candidate, { recursive: true });
     await fs.promises.rename(saved, candidate);
     await restarted.relocateBinding('hello', '_ns__acme__hello');
@@ -366,6 +379,17 @@ describe('LibraryBindingStore', () => {
     });
     await expect(relocateLibraryMetaOwner(root, 'other', 'hello')).rejects.toThrow('different plugin');
     expect(await relocateLibraryMetaOwner(path.join(defaultRootBase, 'missing'), 'hello', '_ns__acme__hello')).toBe(false);
+  });
+
+  it('clears the uninstall marker when asked, including on a repeat after the owner already moved', async () => {
+    const root = path.join(defaultRootBase, 'hello');
+    const file = path.join(root, '.cindy-library', 'meta.json');
+    await fs.promises.mkdir(path.dirname(file), { recursive: true });
+    await fs.promises.writeFile(file, JSON.stringify({ version: 1, ghostId: '_ns__acme__hello', createdAt: 1, orphaned: { at: 2, name: 'old' } }));
+    const options = { clearOrphaned: true };
+    expect(await relocateLibraryMetaOwner(root, 'hello', '_ns__acme__hello', () => {}, options)).toBe(true);
+    expect(JSON.parse(await fs.promises.readFile(file, 'utf8'))).toEqual({ version: 1, ghostId: '_ns__acme__hello', createdAt: 1 });
+    expect(await relocateLibraryMetaOwner(root, 'hello', '_ns__acme__hello', () => {}, options)).toBe(false);
   });
 
   it('无 binding → 默认根;绑定后解析到 <candidate>/<ghostId>', async () => {

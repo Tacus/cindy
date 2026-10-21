@@ -40,9 +40,12 @@ export interface ModelDescriptor {
   description?: string;
   contextWindow: number;
   efforts: readonly Effort[];
+  /** true = the catalog has not declared this model's effort capability yet. */
+  effortsUnknown?: boolean;
   effortDisplayNames?: Partial<Record<Effort, string>>;
   defaultEffort: Effort | null;
   supportsFastMode?: boolean;
+  supportsUltrafastMode?: boolean;
   /** 目录展示排序权重;缺省排末尾。 */
   sortOrder?: number;
   /**
@@ -249,6 +252,7 @@ function isModelDescriptor(value: unknown): value is ModelDescriptor {
     isStringArray(efforts) &&
     (defaultEffort === null ||
       (typeof defaultEffort === 'string' && efforts.includes(defaultEffort))) &&
+    isOptionalBoolean(value.effortsUnknown) &&
     isOptionalString(value.group) &&
     isOptionalString(value.mode) &&
     isOptionalString(value.description) &&
