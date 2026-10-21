@@ -82,6 +82,10 @@
 - 新增或修改任何界面、组件、布局、样式、动效或 UI 文案前，必须先读权威设计规范
   `docs/design-rules/DESIGN.md`；设计文档索引见
   `docs/design-rules/cindy-design-system.md`。
+- 设计、前端、动效类任务需要**自动路由**到合适来源，或新增/修改这类 Agent
+  Skill 时，读 `docs/design-skills/README.md`：正本放 `docs/design-skills/`，用
+  `node scripts/install-design-skill.mjs` 投影到 `.agents/skills`（`.agents/`、`.claude/`、
+  `.pi/` 均被 gitignore，不得把正本直接放那里）。
 - 新增或修改 Mobile（`apps/mobile`）界面上的文字前，必须先查
   `apps/mobile/docs/mobile-design-guide.md` §3「文字规范速查」：先定角色，再整行照抄字号、
   行高、字重、字色；五档中性字色、浅色字不配粗字重、11 档字号、必须配行高四条由
